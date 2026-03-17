@@ -8,6 +8,7 @@ Current supported mods:
 
 - Chisel Chipped Integration
 - XTones Reworked
+- XyCraft: World
 
 ## Layout
 

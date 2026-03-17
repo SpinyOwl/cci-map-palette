@@ -10,16 +10,23 @@ fun main(args: Array<String>) {
     val sourceJar = requireOption(parsed, "source-jar")
     val outputFile = requireOption(parsed, "output-file")
     val sourceNamespace = requireOption(parsed, "source-namespace")
+    val assetJars = parsed["asset-jars"]
+        ?.split(',')
+        ?.map(String::trim)
+        ?.filter(String::isNotEmpty)
+        ?.map(::Path)
+        ?: emptyList()
     val blockstatePattern = parsed["blockstate-pattern"] ?: "assets/{namespace}/blockstates/*.json"
     val preferredTextureKeys = parsed["preferred-texture-keys"]
         ?.split(',')
         ?.map(String::trim)
         ?.filter(String::isNotEmpty)
-        ?: listOf("up", "top", "all", "end", "wool", "side", "carpet_side", "particle")
+        ?: listOf("up", "top", "all", "end", "wool", "side", "carpet_side", "particle", "torch", "cross", "layer0")
 
     ColorMapGenerator().generate(
         ColorGenerationRequest(
             sourceJar = Path(sourceJar),
+            assetJars = assetJars,
             outputFile = Path(outputFile),
             sourceNamespace = sourceNamespace,
             blockstatePattern = blockstatePattern,

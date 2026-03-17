@@ -94,6 +94,12 @@ fun parseLocalYaml(file: File): LocalYamlConfig {
                     sourceJar = resolveConfigPath(
                         itemValues["sourceJar"] ?: error("Missing sourceJar in colorGenerationSpecs item")
                     ),
+                    assetJars = itemValues["assetJars"]
+                        ?.split(',')
+                        ?.map(String::trim)
+                        ?.filter(String::isNotEmpty)
+                        ?.map(::resolveConfigPath)
+                        ?: emptyList(),
                     outputFile = itemValues["outputFile"]?.let(::resolveConfigPath)
                         ?: defaultColorsOutputFile(sourceNamespace),
                     blockstatePattern = itemValues["blockstatePattern"],
@@ -131,6 +137,7 @@ fun resolveConfigPath(value: String): File {
 data class ColorGenerationSpec(
     val sourceNamespace: String,
     val sourceJar: File,
+    val assetJars: List<File> = emptyList(),
     val outputFile: File,
     val blockstatePattern: String? = null,
     val preferredTextureKeys: String? = null
@@ -150,12 +157,18 @@ fun parseColorGenerationSpecs(rawValue: String): List<ColorGenerationSpec> {
         .map { entry ->
             val parts = entry.split('|').map(String::trim)
             require(parts.size >= 2) {
-                "Each colorGenerationSpecs entry must contain namespace|sourceJar and optionally outputFile|blockstatePattern|preferredTextureKeys: $entry"
+                "Each colorGenerationSpecs entry must contain namespace|sourceJar and optionally outputFile|blockstatePattern|preferredTextureKeys|assetJars: $entry"
             }
 
             ColorGenerationSpec(
                 sourceNamespace = parts[0],
                 sourceJar = resolveConfigPath(parts[1]),
+                assetJars = parts.getOrNull(5)?.takeIf { it.isNotBlank() }
+                    ?.split(',')
+                    ?.map(String::trim)
+                    ?.filter(String::isNotEmpty)
+                    ?.map(::resolveConfigPath)
+                    ?: emptyList(),
                 outputFile = parts.getOrNull(2)?.takeIf { it.isNotBlank() }?.let(::resolveConfigPath)
                     ?: defaultColorsOutputFile(parts[0]),
                 blockstatePattern = parts.getOrNull(3)?.takeIf { it.isNotBlank() },
@@ -232,6 +245,13 @@ tasks.register<JavaExec>("generateColors") {
         .orNull
         ?.let(::resolveConfigPath)
         ?: configuredSourceJar
+    val taskAssetJars = providers.gradleProperty("generateColorsAssetJars")
+        .orNull
+        ?.split(',')
+        ?.map(String::trim)
+        ?.filter(String::isNotEmpty)
+        ?.map(::resolveConfigPath)
+        ?: emptyList()
     val taskOutputFile = providers.gradleProperty("generateColorsOutputFile")
         .orNull
         ?.let(::resolveConfigPath)
@@ -252,6 +272,10 @@ tasks.register<JavaExec>("generateColors") {
         "--source-namespace",
         taskSourceNamespace
     )
+
+    if (taskAssetJars.isNotEmpty()) {
+        args("--asset-jars", taskAssetJars.joinToString(",") { it.path })
+    }
 
     val blockstatePattern = providers.gradleProperty("generateColorsBlockstatePattern").orNull
         ?: providers.gradleProperty("colorsBlockstatePattern").orNull
@@ -286,6 +310,10 @@ val configuredColorGenerationTasks = configuredColorGenerationSpecs.map { spec -
             "--source-namespace",
             spec.sourceNamespace
         )
+
+        if (spec.assetJars.isNotEmpty()) {
+            args("--asset-jars", spec.assetJars.joinToString(",") { it.path })
+        }
 
         if (!spec.blockstatePattern.isNullOrBlank()) {
             args("--blockstate-pattern", spec.blockstatePattern)

@@ -1,6 +1,6 @@
 # CCI Map Palette
 
-Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration and XTones Reworked.
+Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration, XTones Reworked, and XyCraft: World.
 
 ## Structure
 
@@ -43,6 +43,8 @@ colorGenerationSpecs:
 ```
 
 If `outputFile` is omitted, it defaults to `resourcepack/assets/<sourceNamespace>/ftbchunks_block_colors.json`.
+
+If a mod stores textures in a companion jar, set `assetJars` as a comma-separated list in the YAML entry.
 
 To copy outputs into your local Minecraft instance, copy `local.yml.example` to `local.yml`. The relative paths for the `Star Technology` instance are already prepared.
 

@@ -14,6 +14,7 @@ import javax.imageio.ImageIO
 
 data class ColorGenerationRequest(
     val sourceJar: Path,
+    val assetJars: List<Path> = emptyList(),
     val outputFile: Path,
     val sourceNamespace: String,
     val blockstatePattern: String = "assets/{namespace}/blockstates/*.json",
@@ -25,7 +26,10 @@ data class ColorGenerationRequest(
         "wool",
         "side",
         "carpet_side",
-        "particle"
+        "particle",
+        "torch",
+        "cross",
+        "layer0"
     )
 )
 
@@ -35,9 +39,15 @@ class ColorMapGenerator {
 
     fun generate(request: ColorGenerationRequest) {
         require(Files.exists(request.sourceJar)) { "Source jar does not exist: ${request.sourceJar}" }
+        request.assetJars.forEach { assetJar ->
+            require(Files.exists(assetJar)) { "Asset jar does not exist: $assetJar" }
+        }
 
-        ZipFile(request.sourceJar.toFile()).use { zip ->
-            val blockstates = zip.entries().asSequence()
+        val jars = listOf(request.sourceJar, *request.assetJars.toTypedArray())
+        val zipFiles = jars.map { ZipFile(it.toFile()) }
+        try {
+            val primaryZip = zipFiles.first()
+            val blockstates = primaryZip.entries().asSequence()
                 .filter { it.name.matches(globToRegex(request.blockstatePattern.replace("{namespace}", request.sourceNamespace))) }
                 .sortedBy { it.name }
                 .toList()
@@ -49,14 +59,13 @@ class ColorMapGenerator {
             val colors = linkedMapOf<String, String>()
             for (blockstate in blockstates) {
                 val blockId = Path.of(blockstate.name).fileName.toString().removeSuffix(".json")
-                val modelId = extractModelId(readText(zip, blockstate), blockstate.name)
+                val modelId = extractModelId(readText(primaryZip, blockstate), blockstate.name)
                 val modelEntryPath = toModelEntryPath(modelId)
-                val modelJson = readJsonMap(zip, modelEntryPath)
-                val textures = readTextures(modelJson, modelEntryPath)
+                val textures = resolveModelTextures(zipFiles, modelEntryPath)
                 val textureId = resolveTextureReference(textures, request.preferredTextureKeys)
                     ?: error("No usable texture found in model: $modelEntryPath")
 
-                colors[blockId] = averageHexColor(zip, textureId)
+                colors[blockId] = averageHexColor(zipFiles, textureId)
             }
 
             val outputDir = request.outputFile.parent
@@ -68,22 +77,51 @@ class ColorMapGenerator {
                 request.outputFile,
                 objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(TreeMap(colors)) + System.lineSeparator()
             )
+        } finally {
+            zipFiles.asReversed().forEach(ZipFile::close)
         }
     }
 
-    private fun readTextures(modelJson: Map<String, Any?>, modelEntryPath: String): Map<String, String> {
-        val texturesValue = modelJson["textures"]
-            ?: error("No textures section found in model: $modelEntryPath")
+    private fun readJsonMap(zips: List<ZipFile>, entryPath: String): Map<String, Any?> {
+        val (zip, entry) = requireEntry(zips, entryPath)
+        val jsonText = readText(zip, entry)
+        return objectMapper.readValue(jsonText, mapType)
+    }
+
+    private fun resolveModelTextures(
+        zips: List<ZipFile>,
+        modelEntryPath: String,
+        visited: MutableSet<String> = linkedSetOf()
+    ): Map<String, String> {
+        require(visited.add(modelEntryPath)) { "Model parent cycle detected: ${visited.joinToString(" -> ")} -> $modelEntryPath" }
+
+        val modelJson = readJsonMap(zips, modelEntryPath)
+        val parentTextures = (modelJson["parent"] as? String)
+            ?.let { parentId -> resolveParentModelEntryPath(parentId, modelEntryPath) }
+            ?.let { parentEntryPath ->
+                try {
+                    resolveModelTextures(zips, parentEntryPath, visited)
+                } catch (exception: IOException) {
+                    if (parentEntryPath.startsWith("assets/minecraft/models/")) {
+                        emptyMap()
+                    } else {
+                        throw exception
+                    }
+                }
+            }
+            ?: emptyMap()
+
+        val ownTextures = readOwnTextures(modelJson, modelEntryPath)
+        return parentTextures + ownTextures
+    }
+
+    private fun readOwnTextures(modelJson: Map<String, Any?>, modelEntryPath: String): Map<String, String> {
+        val texturesValue = modelJson["textures"] ?: return emptyMap()
         require(texturesValue is Map<*, *>) { "Unexpected textures section in model: $modelEntryPath" }
 
         return texturesValue.entries.associate { (key, value) ->
             key.toString() to value.toString()
         }
-    }
-
-    private fun readJsonMap(zip: ZipFile, entryPath: String): Map<String, Any?> {
-        val jsonText = readText(zip, requireEntry(zip, entryPath))
-        return objectMapper.readValue(jsonText, mapType)
     }
 
     private fun extractModelId(blockstateText: String, entryPath: String): String {
@@ -95,23 +133,32 @@ class ColorMapGenerator {
     private fun resolveTextureReference(textures: Map<String, String>, preferredKeys: List<String>): String? {
         for (key in preferredKeys) {
             val value = textures[key] ?: continue
-            var resolved = value
-            while (resolved.startsWith("#")) {
-                val lookup = resolved.removePrefix("#")
-                resolved = textures[lookup] ?: error("Unresolved texture reference: $value")
-            }
-            return resolved
+            return resolveTextureValue(textures, value)
         }
+
+        for (value in textures.values) {
+            return resolveTextureValue(textures, value)
+        }
+
         return null
     }
 
-    private fun averageHexColor(zip: ZipFile, textureId: String): String {
+    private fun resolveTextureValue(textures: Map<String, String>, initialValue: String): String {
+        var resolved = initialValue
+        while (resolved.startsWith("#")) {
+            val lookup = resolved.removePrefix("#")
+            resolved = textures[lookup] ?: error("Unresolved texture reference: $initialValue")
+        }
+        return resolved
+    }
+
+    private fun averageHexColor(zips: List<ZipFile>, textureId: String): String {
         val separatorIndex = textureId.indexOf(':')
         require(separatorIndex >= 0) { "Texture id is missing namespace: $textureId" }
 
         val namespace = textureId.substring(0, separatorIndex)
         val path = textureId.substring(separatorIndex + 1)
-        val entry = requireEntry(zip, "assets/$namespace/textures/$path.png")
+        val (zip, entry) = requireEntry(zips, "assets/$namespace/textures/$path.png")
         val image = zip.getInputStream(entry).use(ImageIO::read)
             ?: error("Unable to decode image for texture: $textureId")
 
@@ -149,8 +196,10 @@ class ColorMapGenerator {
     private fun readText(zip: ZipFile, entry: ZipEntry): String =
         zip.getInputStream(entry).bufferedReader().use { it.readText() }
 
-    private fun requireEntry(zip: ZipFile, entryPath: String): ZipEntry =
-        zip.getEntry(entryPath) ?: throw IOException("Missing zip entry: $entryPath")
+    private fun requireEntry(zips: List<ZipFile>, entryPath: String): Pair<ZipFile, ZipEntry> =
+        zips.firstNotNullOfOrNull { zip ->
+            zip.getEntry(entryPath)?.let { entry -> zip to entry }
+        } ?: throw IOException("Missing zip entry: $entryPath")
 
     private fun toModelEntryPath(modelId: String): String {
         val separatorIndex = modelId.indexOf(':')
@@ -158,6 +207,19 @@ class ColorMapGenerator {
         val namespace = modelId.substring(0, separatorIndex)
         val path = modelId.substring(separatorIndex + 1)
         return "assets/$namespace/models/$path.json"
+    }
+
+    private fun resolveParentModelEntryPath(parentId: String, currentEntryPath: String): String {
+        if (parentId.contains(':')) {
+            return toModelEntryPath(parentId)
+        }
+
+        val currentNamespace = currentEntryPath.removePrefix("assets/").substringBefore('/')
+        return if (parentId.contains('/')) {
+            toModelEntryPath("minecraft:$parentId")
+        } else {
+            toModelEntryPath("$currentNamespace:$parentId")
+        }
     }
 
     private fun globToRegex(glob: String): Regex {
