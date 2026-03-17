@@ -16,7 +16,6 @@ Gradle-driven project for building an FTB Chunks support resource pack. The curr
 ```powershell
 .\gradlew.bat printProjectConfig
 .\gradlew.bat generateColors
-.\gradlew.bat generateBranding
 .\gradlew.bat packResourcepack
 ```
 

@@ -37,8 +37,6 @@ val colorsOutput = resolveConfigPath(configValue(
     "resourcepackColorsFile",
     "resourcepack/assets/chisel_chipped_integration/ftbchunks_block_colors.json"
 )).path
-val packIconOutput = resolveConfigPath(configValue("brandingPackIcon", "resourcepack/pack.png")).path
-val listingIconOutput = resolveConfigPath(configValue("brandingListingIcon", "branding/curseforge-logo.png")).path
 val sourceJar = resolveConfigPath(configValue("modsSourceJar", "../../../mods/chisel_chipped_integration-v1.1.6-1.20.1.jar")).path
 val instanceResourcepacksDir = configValue("instanceResourcepacksDir", "").takeIf { it.isNotBlank() }?.let(::resolveConfigPath)
 val defaultProjectName = rootProject.name
@@ -75,28 +73,10 @@ tasks.register<Exec>("generateColors") {
     )
 }
 
-tasks.register<Exec>("generateBranding") {
-    group = "branding"
-    description = "Generates resourcepack and listing branding assets."
-
-    commandLine(
-        "powershell",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        layout.projectDirectory.file("scripts/generate-logo.ps1").asFile.absolutePath,
-        "-PackOutput",
-        packIconOutput,
-        "-ListingOutput",
-        listingIconOutput
-    )
-}
-
 val packResourcepack by tasks.registering(Zip::class) {
     group = "build"
     description = "Builds a distributable zip of the resource pack."
 
-    dependsOn("generateBranding")
     archiveBaseName.set(archiveBaseNameValue)
     archiveVersion.set(version.toString())
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))

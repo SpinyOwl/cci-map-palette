@@ -16,7 +16,6 @@ This repository builds a Minecraft resource pack that adds `ftbchunks_block_colo
 ## Build Entry Points
 
 - `.\gradlew.bat generateColors` regenerates the block color map.
-- `.\gradlew.bat generateBranding` regenerates pack and listing icons.
 - `.\gradlew.bat packResourcepack` builds a distributable zip.
 - `.\gradlew.bat syncResourcepack` copies the unpacked pack to a configured instance.
 - `.\gradlew.bat syncPackedResourcepack` copies the built zip to a configured instance.
