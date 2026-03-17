@@ -1,6 +1,8 @@
 param(
     [int]$PackSize = 256,
-    [int]$ListingSize = 512
+    [int]$ListingSize = 512,
+    [string]$PackOutput = "resourcepack\pack.png",
+    [string]$ListingOutput = "branding\curseforge-logo.png"
 )
 
 Set-StrictMode -Version Latest
@@ -189,12 +191,25 @@ function New-LogoImage {
 }
 
 $root = Split-Path -Parent $PSScriptRoot
-$referenceImage = Join-Path $root "branding\curseforge-logo.png"
-
-if (Test-Path $referenceImage) {
-    Save-ResizedPng -SourcePath $referenceImage -Size $PackSize -DestinationPath (Join-Path $root "pack.png")
+$resolvedPackOutput = if ([System.IO.Path]::IsPathRooted($PackOutput)) {
+    $PackOutput
 }
 else {
-    New-LogoImage -Size $PackSize -Path (Join-Path $root "pack.png")
-    New-LogoImage -Size $ListingSize -Path (Join-Path $root "branding\curseforge-logo.png")
+    [System.IO.Path]::GetFullPath((Join-Path $root $PackOutput))
+}
+
+$resolvedListingOutput = if ([System.IO.Path]::IsPathRooted($ListingOutput)) {
+    $ListingOutput
+}
+else {
+    [System.IO.Path]::GetFullPath((Join-Path $root $ListingOutput))
+}
+$referenceImage = $resolvedListingOutput
+
+if (Test-Path $referenceImage) {
+    Save-ResizedPng -SourcePath $referenceImage -Size $PackSize -DestinationPath $resolvedPackOutput
+}
+else {
+    New-LogoImage -Size $PackSize -Path $resolvedPackOutput
+    New-LogoImage -Size $ListingSize -Path $resolvedListingOutput
 }

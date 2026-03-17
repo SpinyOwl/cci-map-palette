@@ -1,6 +1,6 @@
 param(
     [string]$SourceJar = "..\..\..\mods\chisel_chipped_integration-v1.1.6-1.20.1.jar",
-    [string]$OutputFile = "assets\chisel_chipped_integration\ftbchunks_block_colors.json"
+    [string]$OutputFile = "resourcepack\assets\chisel_chipped_integration\ftbchunks_block_colors.json"
 )
 
 Set-StrictMode -Version Latest
@@ -133,8 +133,19 @@ function Get-AverageHexColor {
     }
 }
 
-$resolvedJar = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot $SourceJar))
-$resolvedOutput = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\$OutputFile"))
+$resolvedJar = if ([System.IO.Path]::IsPathRooted($SourceJar)) {
+    $SourceJar
+}
+else {
+    [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot $SourceJar))
+}
+
+$resolvedOutput = if ([System.IO.Path]::IsPathRooted($OutputFile)) {
+    $OutputFile
+}
+else {
+    [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\$OutputFile"))
+}
 
 $zip = [System.IO.Compression.ZipFile]::OpenRead($resolvedJar)
 try {

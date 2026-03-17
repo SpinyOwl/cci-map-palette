@@ -1,17 +1,31 @@
 # CCI Map Palette
 
-Resource pack that adds map colors for blocks from Chisel Chipped Integration so they render correctly in FTB Chunks.
+Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration.
 
-## Regenerate
+## Structure
 
-From the pack root:
+- `resourcepack/` contains the actual resource pack contents.
+- `branding/` contains project branding assets.
+- `scripts/` contains helper scripts and shell entry points used by Gradle.
+- `docs/` contains project documentation.
+- `gradle.properties` contains committed project configuration.
+- `local.properties` is an optional ignored override file for local machine paths.
+
+## Gradle Tasks
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\generate-ftbchunks-colors.ps1
+.\gradlew.bat printProjectConfig
+.\gradlew.bat generateColors
+.\gradlew.bat generateBranding
+.\gradlew.bat packResourcepack
 ```
 
-If the mod jar version changes, pass the jar path explicitly:
+To copy outputs into your local Minecraft instance, copy `local.properties.example` to `local.properties`. The relative paths for the `Star Technology` instance are already prepared.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\generate-ftbchunks-colors.ps1 -SourceJar "..\..\..\mods\chisel_chipped_integration-vX.Y.Z-1.20.1.jar"
+## Shell Entry Point
+
+On systems with `sh`, you can build the zip with:
+
+```sh
+./scripts/pack-resourcepack.sh
 ```
