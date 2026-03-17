@@ -4,7 +4,7 @@ plugins {
     base
 }
 
-group = "dev.shcha"
+group = "com.spinyowl"
 
 data class LocalYamlConfig(
     val values: Map<String, String>,

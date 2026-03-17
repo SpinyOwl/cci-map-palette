@@ -1,4 +1,4 @@
-rootProject.name = "chisel-ftb-chunks-support"
+rootProject.name = "cci-map-palette"
 
 include("generator-core")
 include("generator-cli")
