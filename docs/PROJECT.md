@@ -13,6 +13,7 @@ Current supported mods:
 - Simply Light
 - Applied Energistics 2
 - ExtendedAE
+- Rechiseled: Create
 
 ## Layout
 

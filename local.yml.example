@@ -21,3 +21,5 @@ colorGenerationSpecs:
   - sourceNamespace: expatternprovider
     sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/ExtendedAE-1.20-1.4.8-forge.jar
     assetJars: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/appliedenergistics2-forge-15.4.10.jar
+  - sourceNamespace: rechiseledcreate
+    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/rechiseledcreate-1.0.2b-forge-mc1.20.jar
