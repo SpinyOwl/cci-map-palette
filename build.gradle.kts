@@ -196,15 +196,8 @@ evaluationDependsOn(":generator-cli")
 
 val resourcepackDir = layout.projectDirectory.dir(configValue("resourcepackDir", "resourcepack"))
 val archiveBaseNameValue = configValue("resourcepackArchiveBaseName", "cci-map-palette")
-val configuredColorsOutput = resolveConfigPath(
-    configValue(
-        "resourcepackColorsFile",
-        "resourcepack/assets/chisel_chipped_integration/ftbchunks_block_colors.json"
-    )
-)
-val configuredSourceJar = resolveConfigPath(configValue("modsSourceJar", "../../../mods/chisel_chipped_integration-v1.1.6-1.20.1.jar"))
-val configuredSourceNamespace = configValue("colorsSourceNamespace", "chisel_chipped_integration")
 val configuredColorGenerationSpecs = localYaml.colorGenerationSpecs
+val defaultSingleGenerationSpec = configuredColorGenerationSpecs.firstOrNull()
 val instanceResourcepacksDir = configValue("instanceResourcepacksDir", "").takeIf { it.isNotBlank() }?.let(::resolveConfigPath)
 val defaultProjectName = rootProject.name
 val generatorCliProject = project(":generator-cli")
@@ -218,28 +211,35 @@ tasks.register("printProjectConfig") {
     description = "Prints the resolved project configuration from gradle.properties and local.yml."
 
     doLast {
-        println("project.id=${configValue("projectId", defaultProjectName)}")
-        println("project.name=${configValue("projectDisplayName", defaultProjectName)}")
-        println("project.version=$version")
-        println("minecraft.version=${configValue("minecraftVersion", "1.20.1")}")
-        println("resourcepack.dir=${resourcepackDir.asFile}")
-        println("mods.sourceJar=${configuredSourceJar.path}")
-        println("colors.sourceNamespace=$configuredSourceNamespace")
-        println("resourcepack.colorsFile=${configuredColorsOutput.path}")
-        println("colors.generationSpecs=${configuredColorGenerationSpecs.size}")
-        println("instance.resourcepacksDir=${instanceResourcepacksDir?.path ?: "<unset>"}")
+        println("project:")
+        println("  id: ${configValue("projectId", defaultProjectName)}")
+        println("  name: ${configValue("projectDisplayName", defaultProjectName)}")
+        println("  version: $version")
+        println("  minecraftVersion: ${configValue("minecraftVersion", "1.20.1")}")
 
+        println("resourcepack:")
+        println("  dir: ${resourcepackDir.asFile}")
+        println("  archiveBaseName: $archiveBaseNameValue")
+
+        println("generateColors:")
+        println("  sourceJar: ${defaultSingleGenerationSpec?.sourceJar?.path ?: "<unset>"}")
+        println("  sourceNamespace: ${defaultSingleGenerationSpec?.sourceNamespace ?: "<unset>"}")
+        println("  outputFile: ${defaultSingleGenerationSpec?.outputFile?.path ?: "<unset>"}")
+
+        println("instance:")
+        println("  resourcepacksDir: ${instanceResourcepacksDir?.path ?: "<unset>"}")
+
+        println("colorGenerationSpecs:")
         if (configuredColorGenerationSpecs.isEmpty()) {
-            println("colors.generationSpecs.entries=<none>")
+            println("  - <none>")
         } else {
-            configuredColorGenerationSpecs.forEachIndexed { index, spec ->
-                val prefix = "colors.generationSpecs[$index]"
-                println("$prefix.sourceNamespace=${spec.sourceNamespace}")
-                println("$prefix.sourceJar=${spec.sourceJar.path}")
-                println("$prefix.outputFile=${spec.outputFile.path}")
-                println("$prefix.assetJars=${if (spec.assetJars.isEmpty()) "<none>" else spec.assetJars.joinToString(",") { it.path }}")
-                println("$prefix.blockstatePattern=${spec.blockstatePattern ?: "<default>"}")
-                println("$prefix.preferredTextureKeys=${spec.preferredTextureKeys ?: "<default>"}")
+            configuredColorGenerationSpecs.forEach { spec ->
+                println("  - sourceNamespace: ${spec.sourceNamespace}")
+                println("    sourceJar: ${spec.sourceJar.path}")
+                println("    outputFile: ${spec.outputFile.path}")
+                println("    assetJars: ${if (spec.assetJars.isEmpty()) "<none>" else spec.assetJars.joinToString(", ") { it.path }}")
+                println("    blockstatePattern: ${spec.blockstatePattern ?: "<default>"}")
+                println("    preferredTextureKeys: ${spec.preferredTextureKeys ?: "<default>"}")
             }
         }
     }
@@ -247,22 +247,24 @@ tasks.register("printProjectConfig") {
 
 tasks.register<JavaExec>("generateColors") {
     group = "resourcepack"
-    description = "Regenerates ftbchunks block colors. Override with -PgenerateColorsSourceJar, -PgenerateColorsOutputFile, and -PgenerateColorsSourceNamespace."
+    description = "Regenerates ftbchunks block colors. Defaults to the first colorGenerationSpecs entry and can be overridden with -PgenerateColorsSourceJar, -PgenerateColorsOutputFile, and -PgenerateColorsSourceNamespace."
 
     val taskSourceJar = providers.gradleProperty("generateColorsSourceJar")
         .orNull
         ?.let(::resolveConfigPath)
-        ?: configuredSourceJar
+        ?: defaultSingleGenerationSpec?.sourceJar
     val taskOutputFile = providers.gradleProperty("generateColorsOutputFile")
         .orNull
         ?.let(::resolveConfigPath)
     val taskSourceNamespace = providers.gradleProperty("generateColorsSourceNamespace").orNull
-        ?: configuredSourceNamespace
+        ?: defaultSingleGenerationSpec?.sourceNamespace
     val resolvedTaskOutputFile = taskOutputFile
         ?: if (providers.gradleProperty("generateColorsSourceNamespace").isPresent) {
-            defaultColorsOutputFile(taskSourceNamespace)
+            defaultColorsOutputFile(requireNotNull(taskSourceNamespace) {
+                "generateColorsSourceNamespace must be set when deriving the output file."
+            })
         } else {
-            configuredColorsOutput
+            defaultSingleGenerationSpec?.outputFile
         }
     val taskAssetJars = parsePathList(providers.gradleProperty("generateColorsAssetJars").orNull)
     val blockstatePattern = providers.gradleProperty("generateColorsBlockstatePattern").orNull
@@ -270,12 +272,24 @@ tasks.register<JavaExec>("generateColors") {
     val preferredTextureKeys = providers.gradleProperty("generateColorsPreferredTextureKeys").orNull
         ?: providers.gradleProperty("colorsPreferredTextureKeys").orNull
 
+    doFirst {
+        require(taskSourceJar != null) {
+            "No default generateColors source jar is configured. Add at least one colorGenerationSpecs entry to local.yml or pass -PgenerateColorsSourceJar."
+        }
+        require(taskSourceNamespace != null) {
+            "No default generateColors source namespace is configured. Add at least one colorGenerationSpecs entry to local.yml or pass -PgenerateColorsSourceNamespace."
+        }
+        require(resolvedTaskOutputFile != null) {
+            "No default generateColors output file is configured. Add at least one colorGenerationSpecs entry to local.yml or pass -PgenerateColorsOutputFile."
+        }
+    }
+
     configureColorGeneration(
         ColorGenerationSpec(
-            sourceNamespace = taskSourceNamespace,
-            sourceJar = taskSourceJar,
+            sourceNamespace = requireNotNull(taskSourceNamespace),
+            sourceJar = requireNotNull(taskSourceJar),
             assetJars = taskAssetJars,
-            outputFile = resolvedTaskOutputFile,
+            outputFile = requireNotNull(resolvedTaskOutputFile),
             blockstatePattern = blockstatePattern,
             preferredTextureKeys = preferredTextureKeys
         )
