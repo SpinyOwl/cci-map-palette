@@ -1,0 +1,20 @@
+{
+  "assembler_matrix_crafter" : "#E3E0E7",
+  "assembler_matrix_frame" : "#CDD1DB",
+  "assembler_matrix_pattern" : "#E0E1E6",
+  "assembler_matrix_speed" : "#E5E0E1",
+  "assembler_matrix_wall" : "#E9E9EB",
+  "caner" : "#777675",
+  "ex_charger" : "#6C696A",
+  "ex_emc_interface" : "#85747E",
+  "ex_inscriber" : "#767475",
+  "ex_interface" : "#747C82",
+  "ex_io_port" : "#766172",
+  "ex_molecular_assembler" : "#512C6B",
+  "ex_pattern_provider" : "#867E6F",
+  "ingredient_buffer" : "#737373",
+  "oversize_interface" : "#5F715D",
+  "silicon_block" : "#292E3A",
+  "wireless_connect" : "#3E3D40",
+  "wireless_hub" : "#464447"
+}

@@ -1,27 +1,27 @@
 # Copy this file to local.yml and adjust if your instance path differs.
-instanceResourcepacksDir: ../../Games/Curseforge/Minecraft/Instances/Star Technology/resourcepacks
-modsSourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/chisel_chipped_integration-v1.1.6-1.20.1.jar
+instanceResourcepacksDir: path/to/resourcepacks
+modsSourceJar: path/to/mods/chisel_chipped_integration-v1.1.6-1.20.1.jar
 colorGenerationSpecs:
   - sourceNamespace: chisel_chipped_integration
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/chisel_chipped_integration-v1.1.6-1.20.1.jar
+    sourceJar: path/to/mods/chisel_chipped_integration-v1.1.6-1.20.1.jar
   - sourceNamespace: xtonesreworked
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/xtonesreworked-1.0.4-F_1.20.1-47.2.0.jar
+    sourceJar: path/to/mods/xtonesreworked-1.0.4-F_1.20.1-47.2.0.jar
   - sourceNamespace: xycraft_world
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/XyCraft World-0.6.22.jar
-    assetJars: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/XyCraft Core-0.6.22.jar
+    sourceJar: path/to/mods/XyCraft World-0.6.22.jar
+    assetJars: path/to/mods/XyCraft Core-0.6.22.jar
   - sourceNamespace: gtceu
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/gtceu-1.20.1-1.6.4.jar
+    sourceJar: path/to/mods/gtceu-1.20.1-1.6.4.jar
   - sourceNamespace: simplylight
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/simplylight-1.20.1-1.4.6-build.50.jar
+    sourceJar: path/to/mods/simplylight-1.20.1-1.4.6-build.50.jar
   - sourceNamespace: ae2
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/appliedenergistics2-forge-15.4.10.jar
+    sourceJar: path/to/mods/appliedenergistics2-forge-15.4.10.jar
   - sourceNamespace: expandedae
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/expandedae-1.2.7.jar
-    assetJars: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/appliedenergistics2-forge-15.4.10.jar
+    sourceJar: path/to/mods/expandedae-1.2.7.jar
+    assetJars: path/to/mods/appliedenergistics2-forge-15.4.10.jar
   - sourceNamespace: expatternprovider
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/ExtendedAE-1.20-1.4.8-forge.jar
-    assetJars: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/appliedenergistics2-forge-15.4.10.jar
+    sourceJar: path/to/mods/ExtendedAE-1.20-1.4.8-forge.jar
+    assetJars: path/to/mods/appliedenergistics2-forge-15.4.10.jar
   - sourceNamespace: rechiseledcreate
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/rechiseledcreate-1.0.2b-forge-mc1.20.jar
+    sourceJar: path/to/mods/rechiseledcreate-1.0.2b-forge-mc1.20.jar
   - sourceNamespace: create_new_age
-    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/create-new-age-forge-1.20.1-1.1.4.jar
+    sourceJar: path/to/mods/create-new-age-forge-1.20.1-1.1.4.jar
