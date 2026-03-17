@@ -3,6 +3,17 @@ package dev.shcha.ccimap.generator.core
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.FieldInsnNode
+import org.objectweb.asm.tree.InsnNode
+import org.objectweb.asm.tree.IntInsnNode
+import org.objectweb.asm.tree.LdcInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TypeInsnNode
+import org.objectweb.asm.tree.VarInsnNode
 import java.awt.image.BufferedImage
 import java.io.IOException
 import java.nio.file.Files
@@ -95,6 +106,14 @@ class ColorMapGenerator {
             if (skippedBlocks > 0) {
                 System.err.println("Generated ${colors.size} colors and skipped $skippedBlocks blocks for namespace '${request.sourceNamespace}'.")
             }
+
+            if (request.sourceNamespace == "gtceu") {
+                augmentGtceuGeneratedBlocks(zipFiles, colors)
+                Files.writeString(
+                    request.outputFile,
+                    objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(TreeMap(colors)) + System.lineSeparator()
+                )
+            }
         } finally {
             zipFiles.asReversed().forEach(ZipFile::close)
         }
@@ -116,11 +135,300 @@ class ColorMapGenerator {
         fun toHex(): String = "#%02X%02X%02X".format(red, green, blue)
     }
 
+    private data class GtceuMaterialDefinition(
+        val id: String,
+        var primaryColor: Int? = null,
+        var secondaryColor: Int? = null,
+        var iconSet: String? = null,
+        var hasSolidForm: Boolean = false
+    )
+
+    private sealed interface BytecodeValue
+    private data class IntValue(val value: Int) : BytecodeValue
+    private data class FloatValue(val value: Float) : BytecodeValue
+    private data class StringValue(val value: String) : BytecodeValue
+    private data class ResourceLocationValue(val id: String) : BytecodeValue
+    private data class BuilderValue(val definition: GtceuMaterialDefinition) : BytecodeValue
+    private data class MarkerValue(val owner: String) : BytecodeValue
+    private data class FieldValue(val owner: String, val name: String) : BytecodeValue
+    private data object UnknownValue : BytecodeValue
+
     private fun readJsonMap(zips: List<ZipFile>, entryPath: String): Map<String, Any?> {
         val (zip, entry) = requireEntry(zips, entryPath)
         val jsonText = readText(zip, entry)
         return objectMapper.readValue(jsonText, mapType)
     }
+
+    private fun augmentGtceuGeneratedBlocks(zips: List<ZipFile>, colors: MutableMap<String, String>) {
+        val materialDefinitions = loadGtceuMaterialDefinitions(zips)
+        var synthesizedBlocks = 0
+
+        for (definition in materialDefinitions.values) {
+            if (!definition.hasSolidForm) {
+                continue
+            }
+
+            val blockId = "${definition.id}_block"
+            if (colors.containsKey(blockId)) {
+                continue
+            }
+
+            colors[blockId] = resolveGtceuMaterialBlockColor(zips, definition)
+            synthesizedBlocks++
+        }
+
+        if (synthesizedBlocks > 0) {
+            System.err.println("Synthesized $synthesizedBlocks GTCEu material block colors.")
+        }
+    }
+
+    private fun loadGtceuMaterialDefinitions(zips: List<ZipFile>): Map<String, GtceuMaterialDefinition> {
+        val (_, entry) = requireEntry(zips, GTCEU_ELEMENT_MATERIALS_CLASS)
+        val classNode = ClassNode()
+        zips.firstNotNullOf { zip ->
+            zip.getEntry(GTCEU_ELEMENT_MATERIALS_CLASS)?.let { foundEntry ->
+                zip.getInputStream(foundEntry).use { input ->
+                    ClassReader(input).accept(classNode, 0)
+                }
+                zip
+            }
+        }
+
+        val registerMethod = classNode.methods.firstOrNull { it.name == "register" && it.desc == "()V" }
+            ?: error("Unable to find GTCEu material register method")
+
+        return parseGtceuMaterialDefinitions(registerMethod)
+    }
+
+    private fun parseGtceuMaterialDefinitions(method: MethodNode): Map<String, GtceuMaterialDefinition> {
+        val stack = mutableListOf<BytecodeValue>()
+        val locals = mutableMapOf<Int, BytecodeValue>()
+        val materials = linkedMapOf<String, GtceuMaterialDefinition>()
+        val iterator = method.instructions.iterator()
+
+        while (iterator.hasNext()) {
+            when (val instruction = iterator.next()) {
+                is LdcInsnNode -> {
+                    when (val constant = instruction.cst) {
+                        is Int -> stack += IntValue(constant)
+                        is Float -> stack += FloatValue(constant)
+                        is String -> stack += StringValue(constant)
+                        else -> stack += UnknownValue
+                    }
+                }
+
+                is IntInsnNode -> stack += IntValue(instruction.operand)
+
+                is InsnNode -> handleZeroOperandInstruction(instruction.opcode, stack)
+
+                is VarInsnNode -> when (instruction.opcode) {
+                    Opcodes.ALOAD -> stack += locals[instruction.`var`] ?: UnknownValue
+                    Opcodes.ASTORE -> locals[instruction.`var`] = popOrUnknown(stack)
+                }
+
+                is TypeInsnNode -> {
+                    if (instruction.opcode == Opcodes.NEW) {
+                        stack += MarkerValue(instruction.desc)
+                    }
+                }
+
+                is FieldInsnNode -> {
+                    if (instruction.opcode == Opcodes.GETSTATIC) {
+                        stack += FieldValue(instruction.owner, instruction.name)
+                    }
+                }
+
+                is MethodInsnNode -> handleMethodInstruction(instruction, stack, materials)
+            }
+        }
+
+        return materials
+    }
+
+    private fun handleZeroOperandInstruction(opcode: Int, stack: MutableList<BytecodeValue>) {
+        when (opcode) {
+            Opcodes.ACONST_NULL -> stack += UnknownValue
+            Opcodes.ICONST_M1 -> stack += IntValue(-1)
+            Opcodes.ICONST_0 -> stack += IntValue(0)
+            Opcodes.ICONST_1 -> stack += IntValue(1)
+            Opcodes.ICONST_2 -> stack += IntValue(2)
+            Opcodes.ICONST_3 -> stack += IntValue(3)
+            Opcodes.ICONST_4 -> stack += IntValue(4)
+            Opcodes.ICONST_5 -> stack += IntValue(5)
+            Opcodes.FCONST_0 -> stack += FloatValue(0f)
+            Opcodes.FCONST_1 -> stack += FloatValue(1f)
+            Opcodes.FCONST_2 -> stack += FloatValue(2f)
+            Opcodes.DUP -> stack.lastOrNull()?.let { stack += it }
+            Opcodes.POP -> popOrUnknown(stack)
+        }
+    }
+
+    private fun handleMethodInstruction(
+        instruction: MethodInsnNode,
+        stack: MutableList<BytecodeValue>,
+        materials: MutableMap<String, GtceuMaterialDefinition>
+    ) {
+        val argumentCount = countMethodArguments(instruction.desc)
+        val arguments = MutableList(argumentCount) { popOrUnknown(stack) }.asReversed()
+        val receiver = if (instruction.opcode != Opcodes.INVOKESTATIC) popOrUnknown(stack) else null
+
+        when {
+            instruction.owner == GTCEU_OWNER && instruction.name == "id" -> {
+                val id = (arguments.firstOrNull() as? StringValue)?.value
+                if (id == null) {
+                    stack += UnknownValue
+                    return
+                }
+                stack += ResourceLocationValue(id)
+            }
+
+            instruction.owner == MATERIAL_BUILDER_OWNER && instruction.name == "<init>" -> {
+                val id = (arguments.firstOrNull() as? ResourceLocationValue)?.id
+                if (receiver is MarkerValue && id != null) {
+                    val definition = materials.getOrPut(id) { GtceuMaterialDefinition(id) }
+                    stack += BuilderValue(definition)
+                } else {
+                    stack += UnknownValue
+                }
+            }
+
+            instruction.owner == MATERIAL_BUILDER_OWNER -> {
+                val builder = receiver as? BuilderValue
+                if (builder == null) {
+                    if (returnsValue(instruction.desc)) {
+                        stack += UnknownValue
+                    }
+                    return
+                }
+
+                when (instruction.name) {
+                    "ingot", "gem" -> builder.definition.hasSolidForm = true
+                    "color" -> builder.definition.primaryColor = (arguments.firstOrNull() as? IntValue)?.value ?: builder.definition.primaryColor
+                    "secondaryColor" -> builder.definition.secondaryColor = (arguments.firstOrNull() as? IntValue)?.value ?: builder.definition.secondaryColor
+                    "iconSet" -> {
+                        val iconSet = (arguments.firstOrNull() as? FieldValue)
+                            ?.takeIf { it.owner == MATERIAL_ICON_SET_OWNER }
+                            ?.name
+                            ?.lowercase()
+                        if (iconSet != null) {
+                            builder.definition.iconSet = iconSet
+                        }
+                    }
+                    "buildAndRegister" -> {
+                        materials[builder.definition.id] = builder.definition
+                        stack += UnknownValue
+                        return
+                    }
+                }
+
+                if (returnsValue(instruction.desc)) {
+                    stack += builder
+                }
+            }
+
+            else -> if (returnsValue(instruction.desc)) {
+                stack += UnknownValue
+            }
+        }
+    }
+
+    private fun resolveGtceuMaterialBlockColor(
+        zips: List<ZipFile>,
+        definition: GtceuMaterialDefinition
+    ): String {
+        val primary = parseRgb(definition.primaryColor) ?: return DEFAULT_GTCEU_FALLBACK_COLOR
+        val secondary = parseRgb(definition.secondaryColor) ?: primary
+        val iconSet = definition.iconSet ?: return primary.toHex()
+        val modelPath = "assets/gtceu/models/block/material_sets/$iconSet/block.json"
+
+        return try {
+            val resolvedModel = resolveModel(zips, modelPath)
+            val botTextures = resolvedModel.textures
+                .filterKeys { it.startsWith("bot_") }
+                .values
+                .map { resolveTextureValue(resolvedModel.textures, it) }
+                .distinct()
+            val topTextures = resolvedModel.textures
+                .filterKeys { it.startsWith("top_") }
+                .values
+                .map { resolveTextureValue(resolvedModel.textures, it) }
+                .distinct()
+
+            val tintedLayers = mutableListOf<RgbColor>()
+            tintedLayers += botTextures.map { tintTexture(zips, it, primary) }
+            tintedLayers += topTextures.map { tintTexture(zips, it, secondary) }
+
+            if (tintedLayers.isEmpty()) {
+                primary.toHex()
+            } else {
+                averageColors(tintedLayers).toHex()
+            }
+        } catch (_: Exception) {
+            primary.toHex()
+        }
+    }
+
+    private fun tintTexture(zips: List<ZipFile>, textureId: String, tint: RgbColor): RgbColor {
+        val base = averageColor(zips, textureId)
+        return RgbColor(
+            red = (base.red * tint.red / 255.0).roundToInt().coerceIn(0, 255),
+            green = (base.green * tint.green / 255.0).roundToInt().coerceIn(0, 255),
+            blue = (base.blue * tint.blue / 255.0).roundToInt().coerceIn(0, 255)
+        )
+    }
+
+    private fun averageColors(colors: List<RgbColor>): RgbColor {
+        val red = colors.sumOf { it.red } / colors.size
+        val green = colors.sumOf { it.green } / colors.size
+        val blue = colors.sumOf { it.blue } / colors.size
+        return RgbColor(red, green, blue)
+    }
+
+    private fun parseRgb(rawColor: Int?): RgbColor? {
+        if (rawColor == null) {
+            return null
+        }
+
+        return RgbColor(
+            red = rawColor ushr 16 and 0xFF,
+            green = rawColor ushr 8 and 0xFF,
+            blue = rawColor and 0xFF
+        )
+    }
+
+    private fun popOrUnknown(stack: MutableList<BytecodeValue>): BytecodeValue =
+        if (stack.isEmpty()) UnknownValue else stack.removeLast()
+
+    private fun countMethodArguments(descriptor: String): Int {
+        var count = 0
+        var index = descriptor.indexOf('(') + 1
+        while (descriptor[index] != ')') {
+            when (descriptor[index]) {
+                'L' -> {
+                    index = descriptor.indexOf(';', index) + 1
+                    count++
+                }
+                '[' -> {
+                    while (descriptor[index] == '[') {
+                        index++
+                    }
+                    if (descriptor[index] == 'L') {
+                        index = descriptor.indexOf(';', index) + 1
+                    } else {
+                        index++
+                    }
+                    count++
+                }
+                else -> {
+                    index++
+                    count++
+                }
+            }
+        }
+        return count
+    }
+
+    private fun returnsValue(descriptor: String): Boolean = !descriptor.endsWith(")V")
 
     private fun resolveModel(
         zips: List<ZipFile>,
@@ -407,6 +715,11 @@ class ColorMapGenerator {
     }
 
     private companion object {
+        const val DEFAULT_GTCEU_FALLBACK_COLOR = "#808080"
+        const val GTCEU_ELEMENT_MATERIALS_CLASS = "com/gregtechceu/gtceu/common/data/materials/ElementMaterials.class"
+        const val GTCEU_OWNER = "com/gregtechceu/gtceu/GTCEu"
+        const val MATERIAL_BUILDER_OWNER = "com/gregtechceu/gtceu/api/data/chemical/material/Material\$Builder"
+        const val MATERIAL_ICON_SET_OWNER = "com/gregtechceu/gtceu/api/data/chemical/material/info/MaterialIconSet"
         val MODEL_REGEX = Regex("\"model\"\\s*:\\s*\"([^\"]+)\"")
         val KNOWN_COLOR_SUFFIXES = listOf(
             "light_blue",
