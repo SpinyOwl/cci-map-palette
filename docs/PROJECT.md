@@ -14,6 +14,7 @@ Current supported mods:
 - Applied Energistics 2
 - ExtendedAE
 - Rechiseled: Create
+- Create: New Age
 
 ## Layout
 
