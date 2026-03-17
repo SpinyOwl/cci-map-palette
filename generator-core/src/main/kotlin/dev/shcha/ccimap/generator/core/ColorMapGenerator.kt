@@ -73,14 +73,11 @@ class ColorMapGenerator {
             for (blockstate in blockstates) {
                 val blockId = Path.of(blockstate.name).fileName.toString().removeSuffix(".json")
                 try {
-                    val modelId = extractModelId(readText(primaryZip, blockstate), blockstate.name)
-                    val modelEntryPath = toModelEntryPath(modelId)
-                    val resolvedModel = resolveModel(zipFiles, modelEntryPath)
-
-                    colors[blockId] = resolveBlockHexColor(
+                    val modelIds = extractModelIds(readText(primaryZip, blockstate), blockstate.name)
+                    colors[blockId] = resolveBlockStateHexColor(
                         blockId = blockId,
                         zips = zipFiles,
-                        resolvedModel = resolvedModel,
+                        modelIds = modelIds,
                         preferredTextureKeys = request.preferredTextureKeys
                     )
                 } catch (exception: Exception) {
@@ -513,10 +510,23 @@ class ColorMapGenerator {
         }
     }
 
-    private fun extractModelId(blockstateText: String, entryPath: String): String {
-        val match = MODEL_REGEX.find(blockstateText)
-            ?: error("No model found in blockstate: $entryPath")
-        return match.groupValues[1]
+    private fun extractModelIds(blockstateText: String, entryPath: String): List<String> {
+        val blockstateJson = objectMapper.readValue(blockstateText, mapType)
+        val models = collectModelIds(blockstateJson)
+        require(models.isNotEmpty()) { "No model found in blockstate: $entryPath" }
+        return models.distinct()
+    }
+
+    private fun collectModelIds(value: Any?): List<String> {
+        return when (value) {
+            is Map<*, *> -> {
+                val directModel = value["model"]?.toString()?.let(::listOf) ?: emptyList()
+                directModel + value.values.flatMap(::collectModelIds)
+            }
+
+            is List<*> -> value.flatMap(::collectModelIds)
+            else -> emptyList()
+        }
     }
 
     private fun resolveBlockHexColor(
@@ -538,6 +548,27 @@ class ColorMapGenerator {
         val textureId = resolveTextureReference(resolvedModel.textures, preferredTextureKeys)
             ?: error("No usable texture found in model")
         return averageColor(zips, textureId).toHex()
+    }
+
+    private fun resolveBlockStateHexColor(
+        blockId: String,
+        zips: List<ZipFile>,
+        modelIds: List<String>,
+        preferredTextureKeys: List<String>
+    ): String {
+        val colors = modelIds.map { modelId ->
+            val resolvedModel = resolveModel(zips, toModelEntryPath(modelId))
+            parseHexColor(
+                resolveBlockHexColor(
+                    blockId = blockId,
+                    zips = zips,
+                    resolvedModel = resolvedModel,
+                    preferredTextureKeys = preferredTextureKeys
+                )
+            )
+        }
+
+        return averageColors(colors).toHex()
     }
 
     private fun resolveFaceBasedColor(zips: List<ZipFile>, resolvedModel: ResolvedModel): String? {
@@ -861,7 +892,6 @@ class ColorMapGenerator {
         const val GTCEU_OWNER = "com/gregtechceu/gtceu/GTCEu"
         const val MATERIAL_BUILDER_OWNER = "com/gregtechceu/gtceu/api/data/chemical/material/Material\$Builder"
         const val MATERIAL_ICON_SET_OWNER = "com/gregtechceu/gtceu/api/data/chemical/material/info/MaterialIconSet"
-        val MODEL_REGEX = Regex("\"model\"\\s*:\\s*\"([^\"]+)\"")
         val KNOWN_COLOR_SUFFIXES = listOf(
             "light_blue",
             "light_gray",
