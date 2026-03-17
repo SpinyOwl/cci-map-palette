@@ -352,27 +352,28 @@ class ColorMapGenerator {
                 .map { resolveTextureValue(resolvedModel.textures, it) }
                 .distinct()
 
-            val tintedLayers = mutableListOf<RgbColor>()
-            tintedLayers += botTextures.map { tintTexture(zips, it, primary) }
-            tintedLayers += topTextures.map { tintTexture(zips, it, secondary) }
+            val compositeColors = mutableListOf<RgbColor>()
+            for (botTexture in botTextures) {
+                val baseImage = tintImage(loadTextureImage(zips, botTexture), primary)
+                if (topTextures.isEmpty()) {
+                    compositeColors += averageColor(baseImage)
+                    continue
+                }
 
-            if (tintedLayers.isEmpty()) {
+                for (topTexture in topTextures) {
+                    val topImage = tintImage(loadTextureImage(zips, topTexture), secondary)
+                    compositeColors += averageColor(compositeImages(baseImage, topImage))
+                }
+            }
+
+            if (compositeColors.isEmpty()) {
                 primary.toHex()
             } else {
-                averageColors(tintedLayers).toHex()
+                averageColors(compositeColors).toHex()
             }
         } catch (_: Exception) {
             primary.toHex()
         }
-    }
-
-    private fun tintTexture(zips: List<ZipFile>, textureId: String, tint: RgbColor): RgbColor {
-        val base = averageColor(zips, textureId)
-        return RgbColor(
-            red = (base.red * tint.red / 255.0).roundToInt().coerceIn(0, 255),
-            green = (base.green * tint.green / 255.0).roundToInt().coerceIn(0, 255),
-            blue = (base.blue * tint.blue / 255.0).roundToInt().coerceIn(0, 255)
-        )
     }
 
     private fun averageColors(colors: List<RgbColor>): RgbColor {
