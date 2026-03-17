@@ -28,16 +28,28 @@ fun resolveConfigPath(value: String): File {
     return if (file.isAbsolute) file else rootDir.resolve(value).normalize()
 }
 
-version = configValue("version", "0.1.0")
+allprojects {
+    group = rootProject.group
+    version = configValue("version", "0.1.0")
+}
+
+subprojects {
+    repositories {
+        mavenCentral()
+    }
+}
 
 val resourcepackDirPath = configValue("resourcepackDir", "resourcepack")
 val resourcepackDir = layout.projectDirectory.dir(resourcepackDirPath)
 val archiveBaseNameValue = configValue("resourcepackArchiveBaseName", "cci-map-palette")
-val colorsOutput = resolveConfigPath(configValue(
-    "resourcepackColorsFile",
-    "resourcepack/assets/chisel_chipped_integration/ftbchunks_block_colors.json"
-)).path
-val sourceJar = resolveConfigPath(configValue("modsSourceJar", "../../../mods/chisel_chipped_integration-v1.1.6-1.20.1.jar")).path
+val configuredColorsOutput = resolveConfigPath(
+    configValue(
+        "resourcepackColorsFile",
+        "resourcepack/assets/chisel_chipped_integration/ftbchunks_block_colors.json"
+    )
+)
+val configuredSourceJar = resolveConfigPath(configValue("modsSourceJar", "../../../mods/chisel_chipped_integration-v1.1.6-1.20.1.jar"))
+val configuredSourceNamespace = configValue("colorsSourceNamespace", "chisel_chipped_integration")
 val instanceResourcepacksDir = configValue("instanceResourcepacksDir", "").takeIf { it.isNotBlank() }?.let(::resolveConfigPath)
 val defaultProjectName = rootProject.name
 
@@ -51,26 +63,56 @@ tasks.register("printProjectConfig") {
         println("project.version=$version")
         println("minecraft.version=${configValue("minecraftVersion", "1.20.1")}")
         println("resourcepack.dir=${resourcepackDir.asFile}")
-        println("mods.sourceJar=$sourceJar")
+        println("mods.sourceJar=${configuredSourceJar.path}")
+        println("colors.sourceNamespace=$configuredSourceNamespace")
+        println("resourcepack.colorsFile=${configuredColorsOutput.path}")
         println("instance.resourcepacksDir=${instanceResourcepacksDir?.path ?: "<unset>"}")
     }
 }
 
-tasks.register<Exec>("generateColors") {
+tasks.register<JavaExec>("generateColors") {
     group = "resourcepack"
-    description = "Regenerates ftbchunks block colors from the configured mod jar."
+    description = "Regenerates ftbchunks block colors. Override with -PgenerateColorsSourceJar, -PgenerateColorsOutputFile, and -PgenerateColorsSourceNamespace."
 
-    commandLine(
-        "powershell",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        layout.projectDirectory.file("scripts/generate-ftbchunks-colors.ps1").asFile.absolutePath,
-        "-SourceJar",
-        sourceJar,
-        "-OutputFile",
-        colorsOutput
+    dependsOn(":generator-cli:classes")
+    classpath = project(":generator-cli").extensions
+        .getByType(org.gradle.api.plugins.JavaPluginExtension::class.java)
+        .sourceSets
+        .getByName("main")
+        .runtimeClasspath
+    mainClass.set("dev.shcha.ccimap.generator.cli.MainKt")
+
+    val taskSourceJar = providers.gradleProperty("generateColorsSourceJar")
+        .orNull
+        ?.let(::resolveConfigPath)
+        ?: configuredSourceJar
+    val taskOutputFile = providers.gradleProperty("generateColorsOutputFile")
+        .orNull
+        ?.let(::resolveConfigPath)
+        ?: configuredColorsOutput
+    val taskSourceNamespace = providers.gradleProperty("generateColorsSourceNamespace").orNull
+        ?: configuredSourceNamespace
+
+    args(
+        "--source-jar",
+        taskSourceJar.path,
+        "--output-file",
+        taskOutputFile.path,
+        "--source-namespace",
+        taskSourceNamespace
     )
+
+    val blockstatePattern = providers.gradleProperty("generateColorsBlockstatePattern").orNull
+        ?: providers.gradleProperty("colorsBlockstatePattern").orNull
+    if (!blockstatePattern.isNullOrBlank()) {
+        args("--blockstate-pattern", blockstatePattern)
+    }
+
+    val preferredKeys = providers.gradleProperty("generateColorsPreferredTextureKeys").orNull
+        ?: providers.gradleProperty("colorsPreferredTextureKeys").orNull
+    if (!preferredKeys.isNullOrBlank()) {
+        args("--preferred-texture-keys", preferredKeys)
+    }
 }
 
 val packResourcepack by tasks.registering(Zip::class) {

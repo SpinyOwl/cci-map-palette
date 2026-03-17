@@ -8,8 +8,10 @@ This repository builds a Minecraft resource pack that adds `ftbchunks_block_colo
 
 - `resourcepack/` contains the pack contents that should end up in the zip file.
 - `branding/` contains branding and listing assets that are not part of the pack payload.
-- `scripts/` contains generator scripts and shell entry points invoked directly or through Gradle tasks.
+- `scripts/` contains shell entry points.
 - `docs/` contains project documentation.
+- `generator-core/` contains reusable Kotlin generation logic.
+- `generator-cli/` contains the parameterized Kotlin CLI for color map generation.
 - `gradle.properties` contains committed project metadata and default paths.
 - `local.properties` is optional local override config for machine-specific paths such as a Minecraft instance.
 
