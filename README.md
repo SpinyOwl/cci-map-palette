@@ -1,4 +1,4 @@
-# Star Technology Chunk Colors: CCI Edition
+# CCI Map Palette
 
 Resource pack that adds `ftbchunks_block_colors.json` for blocks from `chisel_chipped_integration`, so they render with sensible colors in FTB Chunks.
 
