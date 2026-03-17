@@ -35,6 +35,15 @@ internal object GeneratorSupport {
         "minecraft:block/tnt_bottom" to RgbColor(160, 126, 89)
     )
 
+    val syntheticBlockTextureFallbacks = mapOf(
+        "ae2:cable_bus" to listOf("ae2:part/cable/glass/transparent"),
+        "ae2:paint" to listOf(
+            "ae2:block/paint1",
+            "ae2:block/paint2",
+            "ae2:block/paint3"
+        )
+    )
+
     fun averageColors(colors: List<RgbColor>): RgbColor {
         val red = colors.sumOf { it.red } / colors.size
         val green = colors.sumOf { it.green } / colors.size

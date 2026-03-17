@@ -24,6 +24,7 @@ internal class BlockColorResolver(
 
         if (colors.isEmpty()) {
             resolveItemModelHexColor(sourceNamespace, blockId, preferredTextureKeys)?.let { return it }
+            resolveSyntheticBlockHexColor(sourceNamespace, blockId)?.let { return it }
         }
 
         require(colors.isNotEmpty()) { "No usable model variant found in blockstate" }
@@ -83,6 +84,12 @@ internal class BlockColorResolver(
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun resolveSyntheticBlockHexColor(sourceNamespace: String, blockId: String): String? {
+        val textureIds = GeneratorSupport.syntheticBlockTextureFallbacks["$sourceNamespace:$blockId"] ?: return null
+        val colors = textureIds.map { textureId -> averageColor(textureId) }
+        return GeneratorSupport.averageColors(colors).toHex()
     }
 
     private fun resolveFaceBasedColor(resolvedModel: ResolvedModel): String? {
