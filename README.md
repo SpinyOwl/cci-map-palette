@@ -1,6 +1,6 @@
 # CCI Map Palette
 
-Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration, XTones Reworked, XyCraft: World, and GTCEu.
+Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration, XTones Reworked, XyCraft: World, and GregTech CEu Modern.
 
 ## Structure
 
@@ -15,16 +15,22 @@ Gradle-driven project for building an FTB Chunks support resource pack. The curr
 
 ## Gradle Tasks
 
-```powershell
+```sh
 .\gradlew.bat printProjectConfig
+```
+```sh
 .\gradlew.bat generateColors
+```
+```sh
 .\gradlew.bat generateAllColors
+```
+```sh
 .\gradlew.bat packResourcepack
 ```
 
 You can override generation inputs per run:
 
-```powershell
+```sh
 .\gradlew.bat generateColors `
   -PgenerateColorsSourceJar="G:\path\to\some-mod.jar" `
   -PgenerateColorsOutputFile="resourcepack\assets\some_mod\ftbchunks_block_colors.json" `

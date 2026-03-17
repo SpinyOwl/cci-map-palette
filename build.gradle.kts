@@ -146,35 +146,38 @@ data class ColorGenerationSpec(
 fun defaultColorsOutputFile(sourceNamespace: String): File =
     resolveConfigPath("resourcepack/assets/$sourceNamespace/ftbchunks_block_colors.json")
 
-fun parseColorGenerationSpecs(rawValue: String): List<ColorGenerationSpec> {
-    if (rawValue.isBlank()) {
-        return emptyList()
+fun parsePathList(rawValue: String?): List<File> =
+    rawValue
+        ?.split(',')
+        ?.map(String::trim)
+        ?.filter(String::isNotEmpty)
+        ?.map(::resolveConfigPath)
+        ?: emptyList()
+
+fun JavaExec.configureColorGeneration(spec: ColorGenerationSpec) {
+    dependsOn(":generator-cli:jar")
+    classpath = generatorCliRuntimeClasspath
+    mainClass.set("dev.shcha.ccimap.generator.cli.MainKt")
+    args(
+        "--source-jar",
+        spec.sourceJar.path,
+        "--output-file",
+        spec.outputFile.path,
+        "--source-namespace",
+        spec.sourceNamespace
+    )
+
+    if (spec.assetJars.isNotEmpty()) {
+        args("--asset-jars", spec.assetJars.joinToString(",") { it.path })
     }
 
-    return rawValue.split(';')
-        .map(String::trim)
-        .filter(String::isNotEmpty)
-        .map { entry ->
-            val parts = entry.split('|').map(String::trim)
-            require(parts.size >= 2) {
-                "Each colorGenerationSpecs entry must contain namespace|sourceJar and optionally outputFile|blockstatePattern|preferredTextureKeys|assetJars: $entry"
-            }
+    if (!spec.blockstatePattern.isNullOrBlank()) {
+        args("--blockstate-pattern", spec.blockstatePattern)
+    }
 
-            ColorGenerationSpec(
-                sourceNamespace = parts[0],
-                sourceJar = resolveConfigPath(parts[1]),
-                assetJars = parts.getOrNull(5)?.takeIf { it.isNotBlank() }
-                    ?.split(',')
-                    ?.map(String::trim)
-                    ?.filter(String::isNotEmpty)
-                    ?.map(::resolveConfigPath)
-                    ?: emptyList(),
-                outputFile = parts.getOrNull(2)?.takeIf { it.isNotBlank() }?.let(::resolveConfigPath)
-                    ?: defaultColorsOutputFile(parts[0]),
-                blockstatePattern = parts.getOrNull(3)?.takeIf { it.isNotBlank() },
-                preferredTextureKeys = parts.getOrNull(4)?.takeIf { it.isNotBlank() }
-            )
-        }
+    if (!spec.preferredTextureKeys.isNullOrBlank()) {
+        args("--preferred-texture-keys", spec.preferredTextureKeys)
+    }
 }
 
 allprojects {
@@ -191,8 +194,7 @@ subprojects {
 evaluationDependsOn(":generator-core")
 evaluationDependsOn(":generator-cli")
 
-val resourcepackDirPath = configValue("resourcepackDir", "resourcepack")
-val resourcepackDir = layout.projectDirectory.dir(resourcepackDirPath)
+val resourcepackDir = layout.projectDirectory.dir(configValue("resourcepackDir", "resourcepack"))
 val archiveBaseNameValue = configValue("resourcepackArchiveBaseName", "cci-map-palette")
 val configuredColorsOutput = resolveConfigPath(
     configValue(
@@ -202,11 +204,7 @@ val configuredColorsOutput = resolveConfigPath(
 )
 val configuredSourceJar = resolveConfigPath(configValue("modsSourceJar", "../../../mods/chisel_chipped_integration-v1.1.6-1.20.1.jar"))
 val configuredSourceNamespace = configValue("colorsSourceNamespace", "chisel_chipped_integration")
-val configuredColorGenerationSpecs = if (localYaml.colorGenerationSpecs.isNotEmpty()) {
-    localYaml.colorGenerationSpecs
-} else {
-    parseColorGenerationSpecs(configValue("colorGenerationSpecs", ""))
-}
+val configuredColorGenerationSpecs = localYaml.colorGenerationSpecs
 val instanceResourcepacksDir = configValue("instanceResourcepacksDir", "").takeIf { it.isNotBlank() }?.let(::resolveConfigPath)
 val defaultProjectName = rootProject.name
 val generatorCliProject = project(":generator-cli")
@@ -230,6 +228,20 @@ tasks.register("printProjectConfig") {
         println("resourcepack.colorsFile=${configuredColorsOutput.path}")
         println("colors.generationSpecs=${configuredColorGenerationSpecs.size}")
         println("instance.resourcepacksDir=${instanceResourcepacksDir?.path ?: "<unset>"}")
+
+        if (configuredColorGenerationSpecs.isEmpty()) {
+            println("colors.generationSpecs.entries=<none>")
+        } else {
+            configuredColorGenerationSpecs.forEachIndexed { index, spec ->
+                val prefix = "colors.generationSpecs[$index]"
+                println("$prefix.sourceNamespace=${spec.sourceNamespace}")
+                println("$prefix.sourceJar=${spec.sourceJar.path}")
+                println("$prefix.outputFile=${spec.outputFile.path}")
+                println("$prefix.assetJars=${if (spec.assetJars.isEmpty()) "<none>" else spec.assetJars.joinToString(",") { it.path }}")
+                println("$prefix.blockstatePattern=${spec.blockstatePattern ?: "<default>"}")
+                println("$prefix.preferredTextureKeys=${spec.preferredTextureKeys ?: "<default>"}")
+            }
+        }
     }
 }
 
@@ -237,21 +249,10 @@ tasks.register<JavaExec>("generateColors") {
     group = "resourcepack"
     description = "Regenerates ftbchunks block colors. Override with -PgenerateColorsSourceJar, -PgenerateColorsOutputFile, and -PgenerateColorsSourceNamespace."
 
-    dependsOn(":generator-cli:jar")
-    classpath = generatorCliRuntimeClasspath
-    mainClass.set("dev.shcha.ccimap.generator.cli.MainKt")
-
     val taskSourceJar = providers.gradleProperty("generateColorsSourceJar")
         .orNull
         ?.let(::resolveConfigPath)
         ?: configuredSourceJar
-    val taskAssetJars = providers.gradleProperty("generateColorsAssetJars")
-        .orNull
-        ?.split(',')
-        ?.map(String::trim)
-        ?.filter(String::isNotEmpty)
-        ?.map(::resolveConfigPath)
-        ?: emptyList()
     val taskOutputFile = providers.gradleProperty("generateColorsOutputFile")
         .orNull
         ?.let(::resolveConfigPath)
@@ -263,31 +264,22 @@ tasks.register<JavaExec>("generateColors") {
         } else {
             configuredColorsOutput
         }
-
-    args(
-        "--source-jar",
-        taskSourceJar.path,
-        "--output-file",
-        resolvedTaskOutputFile.path,
-        "--source-namespace",
-        taskSourceNamespace
-    )
-
-    if (taskAssetJars.isNotEmpty()) {
-        args("--asset-jars", taskAssetJars.joinToString(",") { it.path })
-    }
-
+    val taskAssetJars = parsePathList(providers.gradleProperty("generateColorsAssetJars").orNull)
     val blockstatePattern = providers.gradleProperty("generateColorsBlockstatePattern").orNull
         ?: providers.gradleProperty("colorsBlockstatePattern").orNull
-    if (!blockstatePattern.isNullOrBlank()) {
-        args("--blockstate-pattern", blockstatePattern)
-    }
-
-    val preferredKeys = providers.gradleProperty("generateColorsPreferredTextureKeys").orNull
+    val preferredTextureKeys = providers.gradleProperty("generateColorsPreferredTextureKeys").orNull
         ?: providers.gradleProperty("colorsPreferredTextureKeys").orNull
-    if (!preferredKeys.isNullOrBlank()) {
-        args("--preferred-texture-keys", preferredKeys)
-    }
+
+    configureColorGeneration(
+        ColorGenerationSpec(
+            sourceNamespace = taskSourceNamespace,
+            sourceJar = taskSourceJar,
+            assetJars = taskAssetJars,
+            outputFile = resolvedTaskOutputFile,
+            blockstatePattern = blockstatePattern,
+            preferredTextureKeys = preferredTextureKeys
+        )
+    )
 }
 
 val configuredColorGenerationTasks = configuredColorGenerationSpecs.map { spec ->
@@ -298,30 +290,7 @@ val configuredColorGenerationTasks = configuredColorGenerationSpecs.map { spec -
     tasks.register<JavaExec>(taskName) {
         group = "resourcepack"
         description = "Generates a color map for ${spec.sourceNamespace}."
-
-        dependsOn(":generator-cli:jar")
-        classpath = generatorCliRuntimeClasspath
-        mainClass.set("dev.shcha.ccimap.generator.cli.MainKt")
-        args(
-            "--source-jar",
-            spec.sourceJar.path,
-            "--output-file",
-            spec.outputFile.path,
-            "--source-namespace",
-            spec.sourceNamespace
-        )
-
-        if (spec.assetJars.isNotEmpty()) {
-            args("--asset-jars", spec.assetJars.joinToString(",") { it.path })
-        }
-
-        if (!spec.blockstatePattern.isNullOrBlank()) {
-            args("--blockstate-pattern", spec.blockstatePattern)
-        }
-
-        if (!spec.preferredTextureKeys.isNullOrBlank()) {
-            args("--preferred-texture-keys", spec.preferredTextureKeys)
-        }
+        configureColorGeneration(spec)
     }
 }
 
