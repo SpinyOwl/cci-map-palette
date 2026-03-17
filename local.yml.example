@@ -11,3 +11,5 @@ colorGenerationSpecs:
     assetJars: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/XyCraft Core-0.6.22.jar
   - sourceNamespace: gtceu
     sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/gtceu-1.20.1-1.6.4.jar
+  - sourceNamespace: simplylight
+    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/simplylight-1.20.1-1.4.6-build.50.jar

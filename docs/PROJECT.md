@@ -10,6 +10,7 @@ Current supported mods:
 - XTones Reworked
 - XyCraft: World
 - GregTech CEu Modern
+- Simply Light
 
 ## Layout
 

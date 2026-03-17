@@ -124,7 +124,8 @@ class ColorMapGenerator {
         val elements: List<Map<String, Any?>> = emptyList(),
         val loader: String? = null,
         val tintIndex: Int? = null,
-        val baseTintIndex: Int? = null
+        val baseTintIndex: Int? = null,
+        val compositeChildren: List<ResolvedModel> = emptyList()
     )
 
     private data class RgbColor(
@@ -438,6 +439,15 @@ class ColorMapGenerator {
         require(visited.add(modelEntryPath)) { "Model parent cycle detected: ${visited.joinToString(" -> ")} -> $modelEntryPath" }
 
         val modelJson = readJsonMap(zips, modelEntryPath)
+        return resolveModelFromJson(zips, modelJson, modelEntryPath, visited)
+    }
+
+    private fun resolveModelFromJson(
+        zips: List<ZipFile>,
+        modelJson: Map<String, Any?>,
+        modelEntryPath: String,
+        visited: MutableSet<String>
+    ): ResolvedModel {
         val parentModel = (modelJson["parent"] as? String)
             ?.let { parentId -> resolveParentModelEntryPath(parentId, modelEntryPath) }
             ?.let { parentEntryPath ->
@@ -454,13 +464,21 @@ class ColorMapGenerator {
 
         val ownTextures = readOwnTextures(modelJson, modelEntryPath)
         val ownElements = readOwnElements(modelJson, modelEntryPath)
+        val ownChildren = readOwnChildren(modelJson, modelEntryPath)
 
         return ResolvedModel(
             textures = (parentModel?.textures ?: emptyMap()) + ownTextures,
             elements = ownElements ?: parentModel?.elements.orEmpty(),
             loader = modelJson["loader"]?.toString() ?: parentModel?.loader,
             tintIndex = (modelJson["tint_index"] as? Number)?.toInt() ?: parentModel?.tintIndex,
-            baseTintIndex = (modelJson["base_tint_index"] as? Number)?.toInt() ?: parentModel?.baseTintIndex
+            baseTintIndex = (modelJson["base_tint_index"] as? Number)?.toInt() ?: parentModel?.baseTintIndex,
+            compositeChildren = if (ownChildren.isEmpty()) {
+                parentModel?.compositeChildren.orEmpty()
+            } else {
+                ownChildren.map { child ->
+                    resolveModelFromJson(zips, child, modelEntryPath, visited.toMutableSet())
+                }
+            }
         )
     }
 
@@ -481,6 +499,17 @@ class ColorMapGenerator {
             require(element is Map<*, *>) { "Unexpected element at index $index in model: $modelEntryPath" }
             @Suppress("UNCHECKED_CAST")
             element as Map<String, Any?>
+        }
+    }
+
+    private fun readOwnChildren(modelJson: Map<String, Any?>, modelEntryPath: String): List<Map<String, Any?>> {
+        val childrenValue = modelJson["children"] ?: return emptyList()
+        require(childrenValue is Map<*, *>) { "Unexpected children section in model: $modelEntryPath" }
+
+        return childrenValue.values.mapIndexed { index, child ->
+            require(child is Map<*, *>) { "Unexpected child at index $index in model: $modelEntryPath" }
+            @Suppress("UNCHECKED_CAST")
+            child as Map<String, Any?>
         }
     }
 
@@ -512,6 +541,15 @@ class ColorMapGenerator {
     }
 
     private fun resolveFaceBasedColor(zips: List<ZipFile>, resolvedModel: ResolvedModel): String? {
+        if (resolvedModel.compositeChildren.isNotEmpty()) {
+            val childColors = resolvedModel.compositeChildren.mapNotNull { child ->
+                resolveFaceBasedColor(zips, child)?.let(::parseHexColor)
+            }
+            if (childColors.isNotEmpty()) {
+                return averageColors(childColors).toHex()
+            }
+        }
+
         if (resolvedModel.elements.isEmpty()) {
             return null
         }
@@ -748,7 +786,32 @@ class ColorMapGenerator {
     }
 
     private fun readText(zip: ZipFile, entry: ZipEntry): String =
-        zip.getInputStream(entry).bufferedReader().use { it.readText() }
+        zip.getInputStream(entry).bufferedReader().use { it.readText().removePrefix("\uFEFF") }
+
+    private fun parseHexColor(value: String): RgbColor {
+        val normalized = value.removePrefix("#")
+        return when (normalized.length) {
+            6 -> RgbColor(
+                red = normalized.substring(0, 2).toInt(16),
+                green = normalized.substring(2, 4).toInt(16),
+                blue = normalized.substring(4, 6).toInt(16)
+            )
+
+            8 -> {
+                val alpha = normalized.substring(0, 2).toInt(16) / 255.0
+                val red = normalized.substring(2, 4).toInt(16)
+                val green = normalized.substring(4, 6).toInt(16)
+                val blue = normalized.substring(6, 8).toInt(16)
+                RgbColor(
+                    red = (red * alpha).roundToInt(),
+                    green = (green * alpha).roundToInt(),
+                    blue = (blue * alpha).roundToInt()
+                )
+            }
+
+            else -> error("Unsupported hex color: $value")
+        }
+    }
 
     private fun requireEntry(zips: List<ZipFile>, entryPath: String): Pair<ZipFile, ZipEntry> =
         zips.firstNotNullOfOrNull { zip ->

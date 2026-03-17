@@ -1,6 +1,6 @@
 # CCI Map Palette
 
-Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration, XTones Reworked, XyCraft: World, and GregTech CEu Modern.
+Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration, XTones Reworked, XyCraft: World, GregTech CEu Modern, and Simply Light.
 
 ## Structure
 
