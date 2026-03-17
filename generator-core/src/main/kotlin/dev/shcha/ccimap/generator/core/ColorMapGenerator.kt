@@ -557,18 +557,23 @@ class ColorMapGenerator {
         modelIds: List<String>,
         preferredTextureKeys: List<String>
     ): String {
-        val colors = modelIds.map { modelId ->
-            val resolvedModel = resolveModel(zips, toModelEntryPath(modelId))
-            parseHexColor(
-                resolveBlockHexColor(
-                    blockId = blockId,
-                    zips = zips,
-                    resolvedModel = resolvedModel,
-                    preferredTextureKeys = preferredTextureKeys
+        val colors = modelIds.mapNotNull { modelId ->
+            try {
+                val resolvedModel = resolveModel(zips, toModelEntryPath(modelId))
+                parseHexColor(
+                    resolveBlockHexColor(
+                        blockId = blockId,
+                        zips = zips,
+                        resolvedModel = resolvedModel,
+                        preferredTextureKeys = preferredTextureKeys
+                    )
                 )
-            )
+            } catch (_: Exception) {
+                null
+            }
         }
 
+        require(colors.isNotEmpty()) { "No usable model variant found in blockstate" }
         return averageColors(colors).toHex()
     }
 
@@ -714,14 +719,13 @@ class ColorMapGenerator {
     }
 
     private fun loadTextureImage(zips: List<ZipFile>, textureId: String): BufferedImage {
-        val separatorIndex = textureId.indexOf(':')
-        require(separatorIndex >= 0) { "Texture id is missing namespace: $textureId" }
-
-        val namespace = textureId.substring(0, separatorIndex)
-        val path = textureId.substring(separatorIndex + 1)
+        val normalizedTextureId = if (':' in textureId) textureId else "minecraft:$textureId"
+        val separatorIndex = normalizedTextureId.indexOf(':')
+        val namespace = normalizedTextureId.substring(0, separatorIndex)
+        val path = normalizedTextureId.substring(separatorIndex + 1)
         val (zip, entry) = requireEntry(zips, "assets/$namespace/textures/$path.png")
         return zip.getInputStream(entry).use(ImageIO::read)
-            ?: error("Unable to decode image for texture: $textureId")
+            ?: error("Unable to decode image for texture: $normalizedTextureId")
     }
 
     private fun tintImage(image: BufferedImage, tint: RgbColor): BufferedImage {

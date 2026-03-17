@@ -12,6 +12,7 @@ Current supported mods:
 - GregTech CEu Modern
 - Simply Light
 - Applied Energistics 2
+- ExtendedAE
 
 ## Layout
 
