@@ -11,6 +11,7 @@ Current supported mods:
 - XyCraft: World
 - GregTech CEu Modern
 - Simply Light
+- Applied Energistics 2
 
 ## Layout
 
