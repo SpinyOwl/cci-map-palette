@@ -4,6 +4,11 @@
 
 This repository builds a Minecraft resource pack that adds `ftbchunks_block_colors.json` data so blocks from supported mods render with sensible colors in FTB Chunks.
 
+Current supported mods:
+
+- Chisel Chipped Integration
+- XTones Reworked
+
 ## Layout
 
 - `resourcepack/` contains the pack contents that should end up in the zip file.
@@ -13,11 +18,12 @@ This repository builds a Minecraft resource pack that adds `ftbchunks_block_colo
 - `generator-core/` contains reusable Kotlin generation logic.
 - `generator-cli/` contains the parameterized Kotlin CLI for color map generation.
 - `gradle.properties` contains committed project metadata and default paths.
-- `local.properties` is optional local override config for machine-specific paths such as a Minecraft instance.
+- `local.yml` is optional local override config for machine-specific paths and multi-entry color generation specs.
 
 ## Build Entry Points
 
 - `.\gradlew.bat generateColors` regenerates the block color map.
+- `.\gradlew.bat generateAllColors` regenerates all configured color maps from `colorGenerationSpecs`.
 - `.\gradlew.bat packResourcepack` builds a distributable zip.
 - `.\gradlew.bat syncResourcepack` copies the unpacked pack to a configured instance.
 - `.\gradlew.bat syncPackedResourcepack` copies the built zip to a configured instance.

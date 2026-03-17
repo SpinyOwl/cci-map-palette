@@ -1,0 +1,8 @@
+# Copy this file to local.yml and adjust if your instance path differs.
+instanceResourcepacksDir: ../../Games/Curseforge/Minecraft/Instances/Star Technology/resourcepacks
+modsSourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/chisel_chipped_integration-v1.1.6-1.20.1.jar
+colorGenerationSpecs:
+  - sourceNamespace: chisel_chipped_integration
+    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/chisel_chipped_integration-v1.1.6-1.20.1.jar
+  - sourceNamespace: xtonesreworked
+    sourceJar: ../../Games/Curseforge/Minecraft/Instances/Star Technology/mods/xtonesreworked-1.0.4-F_1.20.1-47.2.0.jar

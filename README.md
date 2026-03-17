@@ -1,6 +1,6 @@
 # CCI Map Palette
 
-Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration.
+Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration and XTones Reworked.
 
 ## Structure
 
@@ -11,13 +11,14 @@ Gradle-driven project for building an FTB Chunks support resource pack. The curr
 - `generator-core/` contains reusable Kotlin generation logic.
 - `generator-cli/` contains the parameterized Kotlin CLI used by Gradle.
 - `gradle.properties` contains committed project configuration.
-- `local.properties` is an optional ignored override file for local machine paths.
+- `local.yml` is an optional ignored override file for local machine paths and batch generation specs.
 
 ## Gradle Tasks
 
 ```powershell
 .\gradlew.bat printProjectConfig
 .\gradlew.bat generateColors
+.\gradlew.bat generateAllColors
 .\gradlew.bat packResourcepack
 ```
 
@@ -30,7 +31,20 @@ You can override generation inputs per run:
   -PgenerateColorsSourceNamespace="some_mod"
 ```
 
-To copy outputs into your local Minecraft instance, copy `local.properties.example` to `local.properties`. The relative paths for the `Star Technology` instance are already prepared.
+To generate a configured set of mods in one run, define `colorGenerationSpecs` in `local.yml`:
+
+```yaml
+colorGenerationSpecs:
+  - sourceNamespace: mod_a
+    sourceJar: G:/path/to/mod-a.jar
+  - sourceNamespace: mod_b
+    sourceJar: G:/path/to/mod-b.jar
+    outputFile: resourcepack/assets/mod_b/ftbchunks_block_colors.json
+```
+
+If `outputFile` is omitted, it defaults to `resourcepack/assets/<sourceNamespace>/ftbchunks_block_colors.json`.
+
+To copy outputs into your local Minecraft instance, copy `local.yml.example` to `local.yml`. The relative paths for the `Star Technology` instance are already prepared.
 
 ## Shell Entry Point
 
