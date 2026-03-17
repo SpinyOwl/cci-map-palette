@@ -157,7 +157,7 @@ fun parsePathList(rawValue: String?): List<File> =
 fun JavaExec.configureColorGeneration(spec: ColorGenerationSpec) {
     dependsOn(":generator-cli:jar")
     classpath = generatorCliRuntimeClasspath
-    mainClass.set("dev.shcha.ccimap.generator.cli.MainKt")
+    mainClass.set("com.spinyowl.ccimap.generator.cli.MainKt")
     args(
         "--source-jar",
         spec.sourceJar.path,

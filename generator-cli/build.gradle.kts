@@ -12,5 +12,5 @@ dependencies {
 }
 
 application {
-    mainClass = "dev.shcha.ccimap.generator.cli.MainKt"
+    mainClass = "com.spinyowl.ccimap.generator.cli.MainKt"
 }

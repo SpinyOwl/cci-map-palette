@@ -1,4 +1,4 @@
-package dev.shcha.ccimap.generator.core
+package com.spinyowl.ccimap.generator.core
 
 import java.awt.image.BufferedImage
 import kotlin.math.roundToInt

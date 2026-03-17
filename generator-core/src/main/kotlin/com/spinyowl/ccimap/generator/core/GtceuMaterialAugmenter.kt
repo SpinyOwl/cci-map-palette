@@ -1,4 +1,4 @@
-package dev.shcha.ccimap.generator.core
+package com.spinyowl.ccimap.generator.core
 
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.Opcodes

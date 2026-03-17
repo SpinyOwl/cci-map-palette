@@ -1,7 +1,7 @@
-package dev.shcha.ccimap.generator.cli
+package com.spinyowl.ccimap.generator.cli
 
-import dev.shcha.ccimap.generator.core.ColorGenerationRequest
-import dev.shcha.ccimap.generator.core.ColorMapGenerator
+import com.spinyowl.ccimap.generator.core.ColorGenerationRequest
+import com.spinyowl.ccimap.generator.core.ColorMapGenerator
 import java.nio.file.Path
 import kotlin.io.path.Path
 

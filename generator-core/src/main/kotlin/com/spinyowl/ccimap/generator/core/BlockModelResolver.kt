@@ -1,4 +1,4 @@
-package dev.shcha.ccimap.generator.core
+package com.spinyowl.ccimap.generator.core
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
