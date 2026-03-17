@@ -57,15 +57,25 @@ class ColorMapGenerator {
             }
 
             val colors = linkedMapOf<String, String>()
+            var skippedBlocks = 0
             for (blockstate in blockstates) {
                 val blockId = Path.of(blockstate.name).fileName.toString().removeSuffix(".json")
-                val modelId = extractModelId(readText(primaryZip, blockstate), blockstate.name)
-                val modelEntryPath = toModelEntryPath(modelId)
-                val textures = resolveModelTextures(zipFiles, modelEntryPath)
-                val textureId = resolveTextureReference(textures, request.preferredTextureKeys)
-                    ?: error("No usable texture found in model: $modelEntryPath")
+                try {
+                    val modelId = extractModelId(readText(primaryZip, blockstate), blockstate.name)
+                    val modelEntryPath = toModelEntryPath(modelId)
+                    val textures = resolveModelTextures(zipFiles, modelEntryPath)
+                    val textureId = resolveTextureReference(textures, request.preferredTextureKeys)
+                        ?: error("No usable texture found in model: $modelEntryPath")
 
-                colors[blockId] = averageHexColor(zipFiles, textureId)
+                    colors[blockId] = averageHexColor(zipFiles, textureId)
+                } catch (exception: Exception) {
+                    skippedBlocks++
+                    System.err.println("Skipping block '$blockId': ${exception.message}")
+                }
+            }
+
+            require(colors.isNotEmpty()) {
+                "No colors were generated for namespace '${request.sourceNamespace}'."
             }
 
             val outputDir = request.outputFile.parent
@@ -77,6 +87,10 @@ class ColorMapGenerator {
                 request.outputFile,
                 objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(TreeMap(colors)) + System.lineSeparator()
             )
+
+            if (skippedBlocks > 0) {
+                System.err.println("Generated ${colors.size} colors and skipped $skippedBlocks blocks for namespace '${request.sourceNamespace}'.")
+            }
         } finally {
             zipFiles.asReversed().forEach(ZipFile::close)
         }
