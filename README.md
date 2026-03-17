@@ -1,6 +1,6 @@
 # CCI Map Palette
 
-Resource pack that adds `ftbchunks_block_colors.json` for blocks from `chisel_chipped_integration`, so they render with sensible colors in FTB Chunks.
+Resource pack that adds map colors for blocks from Chisel Chipped Integration so they render correctly in FTB Chunks.
 
 ## Regenerate
 
