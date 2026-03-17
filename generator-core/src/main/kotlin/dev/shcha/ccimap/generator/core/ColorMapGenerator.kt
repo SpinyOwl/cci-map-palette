@@ -553,26 +553,40 @@ class ColorMapGenerator {
         }
 
         val tint = tintFromBlockId(blockId)
-        val textureKeys = listOf("base", "texture_connected", "texture_single")
-            .filter { resolvedModel.textures.containsKey(it) }
-        if (textureKeys.isEmpty()) {
+        val baseTextureId = resolvedModel.textures["base"]?.let { resolveTextureValue(resolvedModel.textures, it) }
+        val layerTextureId = listOf("texture_single", "texture_connected")
+            .firstNotNullOfOrNull { key -> resolvedModel.textures[key]?.let { resolveTextureValue(resolvedModel.textures, it) } }
+        if (baseTextureId == null && layerTextureId == null) {
             return null
         }
 
-        val colors = textureKeys.map { textureKey ->
-            val textureId = resolveTextureValue(resolvedModel.textures, resolvedModel.textures.getValue(textureKey))
-            val textureColor = averageColor(zips, textureId)
-            when {
-                textureKey == "base" && (resolvedModel.baseTintIndex ?: -1) >= 0 && tint != null -> blend(textureColor, tint to 1.0)
-                textureKey.startsWith("texture_") && (resolvedModel.tintIndex ?: -1) >= 0 && tint != null -> blend(textureColor, tint to 1.0)
-                else -> textureColor
+        var composedImage: BufferedImage? = null
+
+        if (baseTextureId != null) {
+            val baseImage = loadTextureImage(zips, baseTextureId)
+            composedImage = if ((resolvedModel.baseTintIndex ?: -1) >= 0 && tint != null) {
+                tintImage(baseImage, tint)
+            } else {
+                baseImage
             }
         }
 
-        val red = colors.sumOf { it.red } / colors.size
-        val green = colors.sumOf { it.green } / colors.size
-        val blue = colors.sumOf { it.blue } / colors.size
-        return RgbColor(red, green, blue).toHex()
+        if (layerTextureId != null) {
+            val layerImage = loadTextureImage(zips, layerTextureId)
+            val tintedLayerImage = if ((resolvedModel.tintIndex ?: -1) >= 0 && tint != null) {
+                tintImage(layerImage, tint)
+            } else {
+                layerImage
+            }
+
+            composedImage = if (composedImage == null) {
+                tintedLayerImage
+            } else {
+                compositeImages(composedImage, tintedLayerImage)
+            }
+        }
+
+        return composedImage?.let(::averageColor)?.toHex()
     }
 
     private fun resolveTextureReference(textures: Map<String, String>, preferredKeys: List<String>): String? {
@@ -598,16 +612,7 @@ class ColorMapGenerator {
     }
 
     private fun averageColor(zips: List<ZipFile>, textureId: String): RgbColor {
-        val separatorIndex = textureId.indexOf(':')
-        require(separatorIndex >= 0) { "Texture id is missing namespace: $textureId" }
-
-        val namespace = textureId.substring(0, separatorIndex)
-        val path = textureId.substring(separatorIndex + 1)
-        val (zip, entry) = requireEntry(zips, "assets/$namespace/textures/$path.png")
-        val image = zip.getInputStream(entry).use(ImageIO::read)
-            ?: error("Unable to decode image for texture: $textureId")
-
-        return averageColor(image)
+        return averageColor(loadTextureImage(zips, textureId))
     }
 
     private fun averageColor(image: BufferedImage): RgbColor {
@@ -636,6 +641,79 @@ class ColorMapGenerator {
         }
 
         return RgbColor((r / count).toInt(), (g / count).toInt(), (b / count).toInt())
+    }
+
+    private fun loadTextureImage(zips: List<ZipFile>, textureId: String): BufferedImage {
+        val separatorIndex = textureId.indexOf(':')
+        require(separatorIndex >= 0) { "Texture id is missing namespace: $textureId" }
+
+        val namespace = textureId.substring(0, separatorIndex)
+        val path = textureId.substring(separatorIndex + 1)
+        val (zip, entry) = requireEntry(zips, "assets/$namespace/textures/$path.png")
+        return zip.getInputStream(entry).use(ImageIO::read)
+            ?: error("Unable to decode image for texture: $textureId")
+    }
+
+    private fun tintImage(image: BufferedImage, tint: RgbColor): BufferedImage {
+        val tinted = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
+        for (x in 0 until image.width) {
+            for (y in 0 until image.height) {
+                val argb = image.getRGB(x, y)
+                val alpha = argb ushr 24 and 0xFF
+                if (alpha == 0) {
+                    continue
+                }
+
+                val red = ((argb ushr 16 and 0xFF) * tint.red / 255.0).roundToInt().coerceIn(0, 255)
+                val green = ((argb ushr 8 and 0xFF) * tint.green / 255.0).roundToInt().coerceIn(0, 255)
+                val blue = ((argb and 0xFF) * tint.blue / 255.0).roundToInt().coerceIn(0, 255)
+                tinted.setRGB(x, y, alpha shl 24 or (red shl 16) or (green shl 8) or blue)
+            }
+        }
+        return tinted
+    }
+
+    private fun compositeImages(base: BufferedImage, overlay: BufferedImage): BufferedImage {
+        val width = maxOf(base.width, overlay.width)
+        val height = maxOf(base.height, overlay.height)
+        val composite = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                val baseArgb = sampleImage(base, x, y, width, height)
+                val overlayArgb = sampleImage(overlay, x, y, width, height)
+                composite.setRGB(x, y, compositePixel(baseArgb, overlayArgb))
+            }
+        }
+
+        return composite
+    }
+
+    private fun sampleImage(image: BufferedImage, x: Int, y: Int, targetWidth: Int, targetHeight: Int): Int {
+        val sourceX = x * image.width / targetWidth
+        val sourceY = y * image.height / targetHeight
+        return image.getRGB(sourceX.coerceIn(0, image.width - 1), sourceY.coerceIn(0, image.height - 1))
+    }
+
+    private fun compositePixel(baseArgb: Int, overlayArgb: Int): Int {
+        val baseAlpha = (baseArgb ushr 24 and 0xFF) / 255.0
+        val overlayAlpha = (overlayArgb ushr 24 and 0xFF) / 255.0
+        val outAlpha = overlayAlpha + baseAlpha * (1.0 - overlayAlpha)
+        if (outAlpha <= 0.0) {
+            return 0
+        }
+
+        fun compositeChannel(baseChannel: Int, overlayChannel: Int): Int {
+            val value =
+                (overlayChannel / 255.0 * overlayAlpha + baseChannel / 255.0 * baseAlpha * (1.0 - overlayAlpha)) / outAlpha
+            return (value * 255.0).roundToInt().coerceIn(0, 255)
+        }
+
+        val red = compositeChannel(baseArgb ushr 16 and 0xFF, overlayArgb ushr 16 and 0xFF)
+        val green = compositeChannel(baseArgb ushr 8 and 0xFF, overlayArgb ushr 8 and 0xFF)
+        val blue = compositeChannel(baseArgb and 0xFF, overlayArgb and 0xFF)
+        val alpha = (outAlpha * 255.0).roundToInt().coerceIn(0, 255)
+        return alpha shl 24 or (red shl 16) or (green shl 8) or blue
     }
 
     private fun parseFaceColor(faceMap: Map<*, *>): Pair<RgbColor, Double>? {
