@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Added default auto-override coverage for more block-heavy building mods including Chipped, Rechiseled, FramedBlocks, Architect's Palette, Dustrial Decor, and Create Diesel Generators.
+- Added publishing metadata and Gradle-based CurseForge publishing for Fabric and Forge artifacts.
+- Added the project icon to packaged mod metadata for both loaders.
+
 ## 0.1.0
 
 - Added runtime FTB Chunks color overrides for Fabric and Forge on Minecraft 1.20.1.
