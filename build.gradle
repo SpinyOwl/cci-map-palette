@@ -1,6 +1,7 @@
 plugins {
 	id "architectury-plugin" version "3.4-SNAPSHOT"
 	id "dev.architectury.loom" version "1.4-SNAPSHOT" apply false
+	id "io.github.themrmilchmann.curseforge-publish" version "0.7.0"
 }
 
 apply from: "https://raw.githubusercontent.com/FTBTeam/mods-meta/main/gradle/changelog.gradle"
@@ -66,4 +67,79 @@ allprojects {
 	java {
 		withSourcesJar()
 	}
+}
+
+def curseforgeProjectId = providers.gradleProperty("curseforge_project_id")
+	.orElse(providers.environmentVariable("CURSEFORGE_PROJECT_ID"))
+def curseforgeApiToken = providers.gradleProperty("curseforgeApiToken")
+	.orElse(providers.environmentVariable("CURSEFORGE_API_TOKEN"))
+def curseforgeReleaseType = providers.gradleProperty("curseforge_release_type").orElse("beta")
+def curseforgeChangelogFile = providers.gradleProperty("curseforge_changelog_file").orElse("CHANGELOG.md")
+def curseforgeReleaseTypeEnum = provider {
+	io.github.themrmilchmann.gradle.publish.curseforge.ReleaseType.valueOf(
+		curseforgeReleaseType.get().toUpperCase(Locale.ROOT)
+	)
+}
+
+curseforge {
+	if (curseforgeApiToken.present) {
+		apiToken = curseforgeApiToken.get()
+	}
+
+	publications {
+		register("fabric") {
+			if (curseforgeProjectId.present) {
+				projectId = curseforgeProjectId.get()
+			}
+			gameVersion("modloader", "fabric")
+			gameVersion("minecraft-1-20", project.minecraft_version)
+
+			artifacts.register("main") {
+				from(project(":fabric").tasks.named("remapJar"))
+				displayName = "${project.readable_name} Fabric ${project.version}"
+				releaseType = curseforgeReleaseTypeEnum.get()
+
+				changelog {
+					format = io.github.themrmilchmann.gradle.publish.curseforge.ChangelogFormat.MARKDOWN
+					from(file(curseforgeChangelogFile.get()))
+				}
+
+				relations {
+					requiredDependency("architectury-api")
+					requiredDependency("fabric-api")
+					requiredDependency("ftb-chunks-fabric")
+				}
+			}
+		}
+
+		register("forge") {
+			if (curseforgeProjectId.present) {
+				projectId = curseforgeProjectId.get()
+			}
+			gameVersion("modloader", "forge")
+			gameVersion("minecraft-1-20", project.minecraft_version)
+
+			artifacts.register("main") {
+				from(project(":forge").tasks.named("remapJar"))
+				displayName = "${project.readable_name} Forge ${project.version}"
+				releaseType = curseforgeReleaseTypeEnum.get()
+
+				changelog {
+					format = io.github.themrmilchmann.gradle.publish.curseforge.ChangelogFormat.MARKDOWN
+					from(file(curseforgeChangelogFile.get()))
+				}
+
+				relations {
+					requiredDependency("architectury-api")
+					requiredDependency("ftb-chunks-forge")
+				}
+			}
+		}
+	}
+}
+
+tasks.register("curseforgePublish") {
+	group = "publishing"
+	description = "Publish Fabric and Forge jars to CurseForge using the configured project id and API token."
+	dependsOn("build", "publishFabricPublicationToCurseForge", "publishForgePublicationToCurseForge")
 }

@@ -3,11 +3,17 @@
   "id": "cci_map_palette",
   "version": "${version}",
   "name": "CCI Map Palette",
-  "description": "Minimal Architectury-based mod scaffold for FTB Chunks runtime palette work.",
+  "description": "${description}",
   "authors": [
     "Spinyowl"
   ],
-  "license": "MIT",
+  "contact": {
+    "homepage": "${homepage}",
+    "sources": "${sources}",
+    "issues": "${issues}"
+  },
+  "license": "${license}",
+  "icon": "assets/cci_map_palette/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [

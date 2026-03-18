@@ -51,6 +51,11 @@ processResources {
 
 	filesMatching("fabric.mod.json") {
 		expand "version": project.version,
+				"description": project.mod_description,
+				"homepage": project.mod_homepage_url,
+				"sources": project.mod_sources_url,
+				"issues": project.mod_issues_url,
+				"license": project.mod_license,
 				"archversion": project.architectury_version,
 				"fabricapiversionrange": project.fabric_api_version_range,
 				"mcversion": project.minecraft_version,

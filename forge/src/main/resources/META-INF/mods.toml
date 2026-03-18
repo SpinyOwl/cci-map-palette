@@ -1,16 +1,18 @@
 modLoader="javafml"
 loaderVersion="${forgeloaderversion}"
-license="MIT"
-issueTrackerURL=""
+license="${license}"
+issueTrackerURL="${issues}"
 
 [[mods]]
 modId="cci_map_palette"
 version="${version}"
 displayName="CCI Map Palette"
 description='''
-Minimal Architectury-based mod scaffold for FTB Chunks runtime palette work.
+${description}
 '''
 authors="Spinyowl"
+displayURL="${homepage}"
+logoFile="assets/cci_map_palette/icon.png"
 
 [[dependencies.cci_map_palette]]
 modId="forge"

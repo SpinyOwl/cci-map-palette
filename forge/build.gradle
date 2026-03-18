@@ -46,6 +46,10 @@ processResources {
 
 	filesMatching("META-INF/mods.toml") {
 		expand "version": project.version,
+				"description": project.mod_description,
+				"homepage": project.mod_homepage_url,
+				"issues": project.mod_issues_url,
+				"license": project.mod_license,
 				"archversion": project.architectury_version,
 				"forgeversionrange": project.forge_version_range,
 				"forgeloaderversion": project.forge_loader_version,
