@@ -1,6 +1,7 @@
 package com.spinyowl.ccimap;
 
 import com.spinyowl.ccimap.internal.client.CciMapPaletteDebugOverlay;
+import com.spinyowl.ccimap.internal.client.AutoBlockColorResolver;
 import net.minecraft.network.chat.Component;
 
 public final class CciMapPaletteClient {
@@ -15,6 +16,7 @@ public final class CciMapPaletteClient {
         }
 
         initialized = true;
+        AutoBlockColorResolver.init();
         CciMapPaletteDebugOverlay.init();
     }
 

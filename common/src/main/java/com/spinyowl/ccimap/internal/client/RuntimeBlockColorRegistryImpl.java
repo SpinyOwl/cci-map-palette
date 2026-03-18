@@ -42,24 +42,22 @@ public final class RuntimeBlockColorRegistryImpl {
 
     public static boolean hasRules(ResourceLocation blockId) {
         List<RuleEntry> entries = RULES.get(blockId);
-        return entries != null && !entries.isEmpty();
+        return (entries != null && !entries.isEmpty()) || AutoBlockColorResolver.hasResolver(blockId);
     }
 
     @Nullable
     public static Color4I resolve(BlockAndTintGetter world, BlockPos pos, BlockState state, ResourceLocation blockId) {
         List<RuleEntry> entries = RULES.get(blockId);
-        if (entries == null || entries.isEmpty()) {
-            return null;
-        }
-
-        for (RuleEntry entry : entries) {
-            Color4I color = entry.resolver.resolve(world, pos, state, blockId);
-            if (color != null) {
-                return color.withAlpha(255);
+        if (entries != null && !entries.isEmpty()) {
+            for (RuleEntry entry : entries) {
+                Color4I color = entry.resolver.resolve(world, pos, state, blockId);
+                if (color != null) {
+                    return color.withAlpha(255);
+                }
             }
         }
 
-        return null;
+        return AutoBlockColorResolver.resolve(world, pos, state, blockId);
     }
 
     public static void invalidateAll() {

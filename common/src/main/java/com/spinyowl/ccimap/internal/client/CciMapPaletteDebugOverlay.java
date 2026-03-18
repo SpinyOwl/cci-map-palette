@@ -151,7 +151,7 @@ public final class CciMapPaletteDebugOverlay {
 
         lines.add("  block: " + formatBlockState(blockId, state));
         lines.add("  pos: " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
-        lines.add("  map_mode: " + FTBChunksClientConfig.MAP_MODE.get().name().toLowerCase(Locale.ROOT));
+        lines.add("  map_mode: " + formatMapMode(FTBChunksClientConfig.MAP_MODE.get()));
         lines.add("  ignored: " + yesNo(FTBChunksClient.INSTANCE.skipBlock(state)));
         lines.add("  runtime_override: " + formatColor(runtimeOverride));
         lines.add("  ftb_source: " + computation.source());
@@ -271,6 +271,11 @@ public final class CciMapPaletteDebugOverlay {
 
     private static String yesNo(boolean value) {
         return value ? "yes" : "no";
+    }
+
+    private static String formatMapMode(MapMode mapMode) {
+        String value = mapMode.name().toLowerCase(Locale.ROOT);
+        return "none".equals(value) ? "normal" : value;
     }
 
     private record ColorComputation(String source, @Nullable Color4I color) {
