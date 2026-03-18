@@ -1,6 +1,7 @@
 package com.spinyowl.ccimap.fabric;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.spinyowl.ccimap.CciMapPaletteCommon;
 import com.spinyowl.ccimap.CciMapPaletteClient;
@@ -56,6 +57,14 @@ public final class CciMapPaletteFabric implements ClientModInitializer {
 								return Command.SINGLE_SUCCESS;
 							})
 						)
+					)
+				)
+				.then(ClientCommandManager.literal("invalidate_map")
+					.then(ClientCommandManager.argument("radius", IntegerArgumentType.integer(0, 32))
+						.executes(context -> {
+							context.getSource().sendFeedback(CciMapPaletteClient.invalidateMapRadius(IntegerArgumentType.getInteger(context, "radius")));
+							return Command.SINGLE_SUCCESS;
+						})
 					)
 				)
 		));
