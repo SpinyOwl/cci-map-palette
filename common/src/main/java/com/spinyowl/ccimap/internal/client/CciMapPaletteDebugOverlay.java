@@ -26,6 +26,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jetbrains.annotations.Nullable;
@@ -144,15 +145,19 @@ public final class CciMapPaletteDebugOverlay {
             lines.add("  target: unknown block");
             return lines;
         }
+        FluidState fluidState = state.getFluidState();
+        ResourceLocation fluidId = fluidState.isEmpty() ? null : BuiltInRegistries.FLUID.getKey(fluidState.getType());
 
         Color4I runtimeOverride = RuntimeBlockColorRegistry.resolve(level, pos, state, blockId);
         ColorComputation computation = computeFtbColor(level, pos, state, blockId, runtimeOverride);
         MapPixelInfo mapPixelInfo = readRenderedPixel(pos);
 
         lines.add("  block: " + formatBlockState(blockId, state));
+        lines.add("  fluid: " + (fluidId == null ? "none" : fluidId));
         lines.add("  pos: " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ());
         lines.add("  map_mode: " + formatMapMode(FTBChunksClientConfig.MAP_MODE.get()));
         lines.add("  ignored: " + yesNo(FTBChunksClient.INSTANCE.skipBlock(state)));
+        lines.add("  map_color_from: " + describeMapColorSource(state, fluidState));
         lines.add("  runtime_override: " + formatColor(runtimeOverride));
         lines.add("  ftb_source: " + computation.source());
         lines.add("  ftb_base_color: " + formatColor(computation.color()));
@@ -276,6 +281,14 @@ public final class CciMapPaletteDebugOverlay {
     private static String formatMapMode(MapMode mapMode) {
         String value = mapMode.name().toLowerCase(Locale.ROOT);
         return "none".equals(value) ? "normal" : value;
+    }
+
+    private static String describeMapColorSource(BlockState state, FluidState fluidState) {
+        if (fluidState.isEmpty()) {
+            return "block";
+        }
+
+        return state.getBlock() == fluidState.createLegacyBlock().getBlock() ? "fluid" : "block+fluid";
     }
 
     private record ColorComputation(String source, @Nullable Color4I color) {
