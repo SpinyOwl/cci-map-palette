@@ -1,0 +1,11 @@
+pluginManagement {
+	repositories {
+		maven { url = uri("https://maven.creeperhost.net/") }
+		maven { url = uri("https://maven.architectury.dev/") }
+		gradlePluginPortal()
+	}
+}
+
+include "common", "fabric", "forge"
+
+rootProject.name = 'cci-map-palette'

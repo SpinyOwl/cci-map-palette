@@ -1,0 +1,71 @@
+plugins {
+	id "com.github.johnrengelman.shadow" version "7.0.0"
+}
+
+architectury {
+	platformSetupLoomIde()
+	forge()
+}
+
+configurations {
+	common
+	shadowCommon
+	compileClasspath.extendsFrom common
+	runtimeClasspath.extendsFrom common
+	developmentForge.extendsFrom common
+	dev
+}
+
+loom {
+	accessWidenerPath = project(":common").file("src/main/resources/cci_map_palette.accesswidener")
+	forge {
+		convertAccessWideners = true
+		extraAccessWideners.add("cci_map_palette.accesswidener")
+	}
+}
+
+artifacts {
+	dev(jar)
+}
+
+dependencies {
+	forge "net.minecraftforge:forge:${rootProject.minecraft_version}-${rootProject.forge_version}"
+	modApi "dev.architectury:architectury-forge:${rootProject.architectury_version}"
+
+	common(project(path: ":common", configuration: "dev")) { transitive false }
+	shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive false }
+}
+
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("META-INF/mods.toml") {
+		expand "version": project.version,
+				"archversion": project.architectury_version,
+				"forgeversionrange": project.forge_version_range,
+				"forgeloaderversion": project.forge_loader_version,
+				"mcversion": project.minecraft_version
+	}
+}
+
+shadowJar {
+	configurations = [project.configurations.shadowCommon]
+	archiveClassifier = "dev-shadow"
+}
+
+remapJar {
+	input.set shadowJar.archiveFile
+	dependsOn shadowJar
+	archiveBaseName.set "${rootProject.archives_base_name}-${project.name}"
+	archiveClassifier.set null
+}
+
+jar {
+	archiveClassifier = "dev"
+}
+
+components.java {
+	withVariantsFromConfiguration(project.configurations.shadowRuntimeElements) {
+		skip()
+	}
+}

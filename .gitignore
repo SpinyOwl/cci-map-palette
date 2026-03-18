@@ -1,4 +1,5 @@
-.gradle/
-build/
-local.yml
+/.gradle/
+/build/
+/run/
 /.idea/
+/.kotlin/

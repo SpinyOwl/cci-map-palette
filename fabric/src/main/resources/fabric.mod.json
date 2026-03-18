@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "cci_map_palette",
+  "version": "${version}",
+  "name": "CCI Map Palette",
+  "description": "Minimal Architectury-based mod scaffold for FTB Chunks runtime palette work.",
+  "authors": [
+    "Spinyowl"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.spinyowl.ccimap.fabric.CciMapPaletteFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.21",
+    "fabric-api": "${fabricapiversionrange}",
+    "minecraft": "${mcversion}",
+    "architectury": "${archversion}"
+  }
+}

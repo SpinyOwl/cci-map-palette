@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="${forgeloaderversion}"
+license="MIT"
+issueTrackerURL=""
+
+[[mods]]
+modId="cci_map_palette"
+version="${version}"
+displayName="CCI Map Palette"
+description='''
+Minimal Architectury-based mod scaffold for FTB Chunks runtime palette work.
+'''
+authors="Spinyowl"
+
+[[dependencies.cci_map_palette]]
+modId="forge"
+mandatory=true
+versionRange="${forgeversionrange}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.cci_map_palette]]
+modId="minecraft"
+mandatory=true
+versionRange="${mcversion}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.cci_map_palette]]
+modId="architectury"
+mandatory=true
+versionRange="[${archversion},)"
+ordering="NONE"
+side="BOTH"
