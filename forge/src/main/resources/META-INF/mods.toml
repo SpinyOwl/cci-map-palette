@@ -32,3 +32,10 @@ mandatory=true
 versionRange="[${archversion},)"
 ordering="NONE"
 side="BOTH"
+
+[[dependencies.cci_map_palette]]
+modId="ftbchunks"
+mandatory=true
+versionRange="${ftbchunksversionrange}"
+ordering="NONE"
+side="CLIENT"

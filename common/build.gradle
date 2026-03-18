@@ -1,6 +1,10 @@
 dependencies {
 	modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
 	modApi "dev.architectury:architectury:${rootProject.architectury_version}"
+	modCompileOnly("dev.ftb.mods:ftb-chunks:${rootProject.ftb_chunks_version}")
+	modCompileOnly("dev.ftb.mods:ftb-library:${rootProject.ftb_library_version}")
+
+	compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.4.1"))
 }
 
 architectury {

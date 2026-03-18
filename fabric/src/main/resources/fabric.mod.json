@@ -8,9 +8,9 @@
     "Spinyowl"
   ],
   "license": "MIT",
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
-    "main": [
+    "client": [
       "com.spinyowl.ccimap.fabric.CciMapPaletteFabric"
     ]
   },
@@ -18,6 +18,10 @@
     "fabricloader": ">=0.14.21",
     "fabric-api": "${fabricapiversionrange}",
     "minecraft": "${mcversion}",
-    "architectury": "${archversion}"
-  }
+    "architectury": "${archversion}",
+    "ftbchunks": "${ftbchunksversionrange}"
+  },
+  "mixins": [
+    "cci_map_palette.mixins.json"
+  ]
 }

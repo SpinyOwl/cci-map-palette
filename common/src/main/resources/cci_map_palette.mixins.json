@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.spinyowl.ccimap.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [],
+  "client": [
+    "RenderMapImageTaskMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

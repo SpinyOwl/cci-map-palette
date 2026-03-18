@@ -3,3 +3,7 @@
 /run/
 /.idea/
 /.kotlin/
+**/build/
+**/build/**
+**/.gradle/
+**/.gradle/**

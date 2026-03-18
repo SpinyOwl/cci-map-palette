@@ -54,6 +54,13 @@ allprojects {
 				includeGroup "net.minecraftforge"
 			}
 		}
+
+		maven {
+			url "https://maven.ftb.dev/releases"
+			content {
+				includeGroup "dev.ftb.mods"
+			}
+		}
 	}
 
 	java {

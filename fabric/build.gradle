@@ -39,6 +39,8 @@ dependencies {
 	modApi "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
 	modApi "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
 	modApi "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
+	modImplementation(include("io.github.llamalad7:mixinextras-fabric:0.4.1"))
+	modImplementation "dev.ftb.mods:ftb-chunks-fabric:${rootProject.ftb_chunks_version}"
 
 	common(project(path: ":common", configuration: "dev")) { transitive false }
 	shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
@@ -51,7 +53,8 @@ processResources {
 		expand "version": project.version,
 				"archversion": project.architectury_version,
 				"fabricapiversionrange": project.fabric_api_version_range,
-				"mcversion": project.minecraft_version
+				"mcversion": project.minecraft_version,
+				"ftbchunksversionrange": project.ftb_chunks_version_range
 	}
 }
 
