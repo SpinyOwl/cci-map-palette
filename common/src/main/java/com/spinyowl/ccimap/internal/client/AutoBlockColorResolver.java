@@ -27,12 +27,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AutoBlockColorResolver {
     private static final Direction[] DIRECTIONS = Direction.values();
     private static final Map<ResourceLocation, @Nullable Color4I> SPRITE_AVERAGES = new ConcurrentHashMap<>();
+    private static final int CONFIG_POLL_INTERVAL_TICKS = 20;
+    private static int ticksUntilPoll = CONFIG_POLL_INTERVAL_TICKS;
 
     private AutoBlockColorResolver() {
     }
 
     public static void init() {
         AutoBlockColorConfig.load();
+    }
+
+    public static void tick() {
+        if (--ticksUntilPoll > 0) {
+            return;
+        }
+
+        ticksUntilPoll = CONFIG_POLL_INTERVAL_TICKS;
+        if (AutoBlockColorConfig.reloadIfChanged()) {
+            RuntimeBlockColorRegistryImpl.invalidateAll();
+        }
     }
 
     static boolean hasResolver(ResourceLocation blockId) {
