@@ -22,7 +22,9 @@ import java.util.Set;
 import java.util.TreeSet;
 
 public final class AutoBlockColorConfig {
+    private static final String MOD_ID = "cci_map_palette";
     private static final String KEY_NAMESPACES = "auto_override_namespaces";
+    private static final String KEY_DEFAULTS_VERSION = "defaults_version";
     private static final Set<String> DEFAULT_NAMESPACES = Set.of(
         "ae2",
         "architects_palette",
@@ -59,8 +61,8 @@ public final class AutoBlockColorConfig {
         }
 
         try {
-            namespaces = parseNamespaces(Files.readString(path, StandardCharsets.UTF_8));
-            lastModifiedMillis = getLastModifiedMillis(path);
+            ParsedConfig parsed = parse(Files.readString(path, StandardCharsets.UTF_8));
+            namespaces = applyVersionMigration(path, parsed);
         } catch (IOException ex) {
             ex.printStackTrace();
             namespaces = DEFAULT_NAMESPACES;
@@ -137,7 +139,8 @@ public final class AutoBlockColorConfig {
 
         Set<String> previous = namespaces;
         try {
-            namespaces = parseNamespaces(Files.readString(path, StandardCharsets.UTF_8));
+            ParsedConfig parsed = parse(Files.readString(path, StandardCharsets.UTF_8));
+            namespaces = applyVersionMigration(path, parsed);
         } catch (IOException ex) {
             ex.printStackTrace();
             namespaces = previous;
@@ -145,7 +148,6 @@ public final class AutoBlockColorConfig {
             return false;
         }
 
-        lastModifiedMillis = currentModified;
         return !previous.equals(namespaces);
     }
 
@@ -177,10 +179,11 @@ public final class AutoBlockColorConfig {
         return new Resolution(List.copyOf(resolved));
     }
 
-    private static Set<String> parseNamespaces(String content) {
+    private static ParsedConfig parse(String content) {
+        String defaultsVersion = extractString(content, KEY_DEFAULTS_VERSION);
         String value = extractArray(content, KEY_NAMESPACES);
         if (value == null || value.isBlank()) {
-            return DEFAULT_NAMESPACES;
+            return new ParsedConfig(defaultsVersion, DEFAULT_NAMESPACES);
         }
 
         LinkedHashSet<String> parsed = new LinkedHashSet<>();
@@ -204,30 +207,33 @@ public final class AutoBlockColorConfig {
         }
 
         if (parsed.isEmpty()) {
-            return DEFAULT_NAMESPACES;
+            return new ParsedConfig(defaultsVersion, DEFAULT_NAMESPACES);
         }
 
-        return Set.copyOf(parsed);
+        return new ParsedConfig(defaultsVersion, Set.copyOf(parsed));
+    }
+
+    private static Set<String> applyVersionMigration(Path path, ParsedConfig parsed) {
+        String currentVersion = currentDefaultsVersion();
+        if (currentVersion.equals(parsed.defaultsVersion())) {
+            lastModifiedMillis = getLastModifiedMillis(path);
+            return parsed.namespaces();
+        }
+
+        LinkedHashSet<String> merged = new LinkedHashSet<>(parsed.namespaces());
+        merged.addAll(DEFAULT_NAMESPACES);
+        Set<String> updated = Set.copyOf(merged);
+        namespaces = updated;
+        save(path, updated, currentVersion);
+        return updated;
     }
 
     private static void saveDefault(Path path) {
-        try {
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, serialize(DEFAULT_NAMESPACES), StandardCharsets.UTF_8);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
+        save(path, DEFAULT_NAMESPACES, currentDefaultsVersion());
     }
 
     private static void saveCurrent() {
-        Path path = path();
-        try {
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, serialize(namespaces), StandardCharsets.UTF_8);
-            lastModifiedMillis = getLastModifiedMillis(path);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
+        save(path(), namespaces, currentDefaultsVersion());
     }
 
     private static long getLastModifiedMillis(Path path) {
@@ -262,6 +268,27 @@ public final class AutoBlockColorConfig {
         return null;
     }
 
+    private static String extractString(String content, String key) {
+        for (String rawLine : content.split("\\R")) {
+            String line = stripComments(rawLine).trim();
+            if (line.isEmpty() || !line.startsWith(key)) {
+                continue;
+            }
+
+            int separator = line.indexOf('=');
+            if (separator < 0) {
+                continue;
+            }
+
+            String value = line.substring(separator + 1).trim();
+            if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+                return value.substring(1, value.length() - 1);
+            }
+        }
+
+        return "";
+    }
+
     private static String stripComments(String line) {
         boolean inString = false;
         for (int i = 0; i < line.length(); i++) {
@@ -276,11 +303,13 @@ public final class AutoBlockColorConfig {
         return line;
     }
 
-    private static String serialize(Set<String> values) {
+    private static String serialize(Set<String> values, String defaultsVersion) {
         StringWriter stringWriter = new StringWriter();
         stringWriter.append("# Namespaces whose blocks should use the runtime model/texture color resolver.\n");
         stringWriter.append("# This file is shared by Fabric and Forge and reloads automatically at runtime.\n");
         stringWriter.append("# You can use /cci_map_palette auto_override add|remove <namespace-or-mod-name> in game.\n");
+        stringWriter.append("# New default namespaces are merged into this file automatically when the mod version changes.\n");
+        stringWriter.append(KEY_DEFAULTS_VERSION).append(" = \"").append(defaultsVersion).append("\"\n");
         stringWriter.append(KEY_NAMESPACES).append(" = [");
 
         boolean first = true;
@@ -295,6 +324,20 @@ public final class AutoBlockColorConfig {
 
         stringWriter.append("]\n");
         return stringWriter.toString();
+    }
+
+    private static void save(Path path, Set<String> values, String defaultsVersion) {
+        try {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, serialize(values, defaultsVersion), StandardCharsets.UTF_8);
+            lastModifiedMillis = getLastModifiedMillis(path);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private static String currentDefaultsVersion() {
+        return Platform.getMod(MOD_ID).getVersion();
     }
 
     private static String normalize(String value) {
@@ -314,5 +357,8 @@ public final class AutoBlockColorConfig {
     }
 
     private record Resolution(List<String> namespaces) {
+    }
+
+    private record ParsedConfig(String defaultsVersion, Set<String> namespaces) {
     }
 }
