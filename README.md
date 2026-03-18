@@ -1,6 +1,15 @@
 # CCI Map Palette
 
-Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from Chisel Chipped Integration, XTones Reworked, XyCraft: World, GregTech CEu Modern, Simply Light, Applied Energistics 2, ExtendedAE, Rechiseled: Create, and Create: New Age.
+Gradle-driven project for building an FTB Chunks support resource pack. The current pack adds map colors for blocks from:
+- Chisel Chipped Integration
+- XTones Reworked
+- XyCraft: World
+- GregTech CEu Modern
+- Simply Light
+- Applied Energistics 2
+- ExtendedAE
+- Rechiseled: Create
+- Create: New Age
 
 ## Structure
 
@@ -12,6 +21,8 @@ Gradle-driven project for building an FTB Chunks support resource pack. The curr
 - `generator-cli/` contains the parameterized Kotlin CLI used by Gradle.
 - `gradle.properties` contains committed project configuration.
 - `local.yml` is an optional ignored override file for local machine paths and batch generation specs.
+- `AGENTS.md` describes the multi-agent workflow for this repository.
+- `docs/multi-agent.md` explains the coordinator-driven worker assignment model.
 
 ## Gradle Tasks
 

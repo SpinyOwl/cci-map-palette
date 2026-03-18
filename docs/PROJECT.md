@@ -34,3 +34,8 @@ Current supported mods:
 - `.\gradlew.bat packResourcepack` builds a distributable zip.
 - `.\gradlew.bat syncResourcepack` copies the unpacked pack to a configured instance.
 - `.\gradlew.bat syncPackedResourcepack` copies the built zip to a configured instance.
+
+## Multi-Agent Workflow
+
+- `AGENTS.md` defines the repo-specific working rules for agents.
+- `docs/multi-agent.md` documents the coordinator-driven worker assignment model and handoff format.

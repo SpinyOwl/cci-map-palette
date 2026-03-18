@@ -1,0 +1,32 @@
+version: 1
+agents:
+  coordinator:
+    name: cci-map-coordinator
+    type: coordinator
+    responsibilities:
+      - plan work
+      - assign tasks
+      - resolve overlap
+      - integrate final changes
+    watched_paths:
+      - README.md
+      - docs/**
+      - build.gradle.kts
+      - settings.gradle.kts
+      - generator-core/**
+      - generator-cli/**
+      - resourcepack/**
+      - scripts/**
+  workers:
+    - name: cci-map-worker-1
+      type: worker
+      responsibilities:
+        - execute assigned repo work
+        - make focused changes
+        - report validation and risks
+    - name: cci-map-worker-2
+      type: worker
+      responsibilities:
+        - execute assigned repo work
+        - make focused changes
+        - report validation and risks

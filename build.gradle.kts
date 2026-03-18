@@ -325,6 +325,8 @@ val packResourcepack by tasks.registering(Zip::class) {
     group = "build"
     description = "Builds a distributable zip of the resource pack."
 
+    outputs.cacheIf("Resource pack archives should always be rebuilt.") { false }
+    outputs.upToDateWhen { false }
     archiveBaseName.set(archiveBaseNameValue)
     archiveVersion.set(version.toString())
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
