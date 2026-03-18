@@ -23,7 +23,18 @@ import java.util.TreeSet;
 
 public final class AutoBlockColorConfig {
     private static final String KEY_NAMESPACES = "auto_override_namespaces";
-    private static final Set<String> DEFAULT_NAMESPACES = Set.of("chisel_chipped_integration");
+    private static final Set<String> DEFAULT_NAMESPACES = Set.of(
+        "ae2",
+        "chisel_chipped_integration",
+        "create_new_age",
+        "expandedae",
+        "expatternprovider",
+        "gtceu",
+        "rechiseledcreate",
+        "simplylight",
+        "xtonesreworked",
+        "xycraft_world"
+    );
     private static volatile Set<String> namespaces = DEFAULT_NAMESPACES;
     private static volatile long lastModifiedMillis = Long.MIN_VALUE;
 
