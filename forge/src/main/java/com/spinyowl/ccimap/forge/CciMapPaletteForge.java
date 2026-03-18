@@ -1,6 +1,7 @@
 package com.spinyowl.ccimap.forge;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.spinyowl.ccimap.CciMapPaletteCommon;
 import com.spinyowl.ccimap.CciMapPaletteClient;
 import net.minecraft.commands.Commands;
@@ -35,6 +36,34 @@ public final class CciMapPaletteForge {
 						context.getSource().sendSuccess(() -> CciMapPaletteClient.debugFeedback(CciMapPaletteClient.setDebugEnabled(false)), false);
 						return Command.SINGLE_SUCCESS;
 					}))
+				)
+				.then(Commands.literal("auto_override")
+					.executes(context -> {
+						context.getSource().sendSuccess(() -> CciMapPaletteClient.listAutoOverrides(), false);
+						return Command.SINGLE_SUCCESS;
+					})
+					.then(Commands.literal("list")
+						.executes(context -> {
+							context.getSource().sendSuccess(() -> CciMapPaletteClient.listAutoOverrides(), false);
+							return Command.SINGLE_SUCCESS;
+						})
+					)
+					.then(Commands.literal("add")
+						.then(Commands.argument("target", StringArgumentType.greedyString())
+							.executes(context -> {
+								context.getSource().sendSuccess(() -> CciMapPaletteClient.addAutoOverride(StringArgumentType.getString(context, "target")), false);
+								return Command.SINGLE_SUCCESS;
+							})
+						)
+					)
+					.then(Commands.literal("remove")
+						.then(Commands.argument("target", StringArgumentType.greedyString())
+							.executes(context -> {
+								context.getSource().sendSuccess(() -> CciMapPaletteClient.removeAutoOverride(StringArgumentType.getString(context, "target")), false);
+								return Command.SINGLE_SUCCESS;
+							})
+						)
+					)
 				)
 		);
 	}

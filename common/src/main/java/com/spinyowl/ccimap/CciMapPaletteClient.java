@@ -3,6 +3,7 @@ package com.spinyowl.ccimap;
 import dev.architectury.event.events.client.ClientTickEvent;
 import com.spinyowl.ccimap.internal.client.CciMapPaletteDebugOverlay;
 import com.spinyowl.ccimap.internal.client.AutoBlockColorResolver;
+import com.spinyowl.ccimap.internal.client.AutoBlockColorConfig;
 import net.minecraft.network.chat.Component;
 
 public final class CciMapPaletteClient {
@@ -49,5 +50,17 @@ public final class CciMapPaletteClient {
      */
     public static Component debugFeedback(boolean enabled) {
         return CciMapPaletteDebugOverlay.feedback(enabled);
+    }
+
+    public static Component listAutoOverrides() {
+        return AutoBlockColorConfig.list();
+    }
+
+    public static Component addAutoOverride(String input) {
+        return AutoBlockColorConfig.add(input);
+    }
+
+    public static Component removeAutoOverride(String input) {
+        return AutoBlockColorConfig.remove(input);
     }
 }

@@ -38,7 +38,7 @@ They do not own fixed task types or fixed path sets. The coordinator assigns wor
 - Follow clean code principles: keep functions small, names specific, and control flow easy to scan.
 - Prefer simple, direct implementations over clever abstractions.
 - Reuse existing patterns in the repository before introducing new ones.
-- Keep public APIs documented with Javadocs or KDoc, especially for classes, functions, and data types that define behavior or contracts.
+- Keep public/private APIs documented with Javadocs or KDoc, especially for classes, functions, and data types that define behavior or contracts.
 - Add inline comments only when the code would otherwise be hard to understand.
 - Preserve formatting and style consistency with surrounding code.
 - Avoid unnecessary renames or refactors that do not support the task.

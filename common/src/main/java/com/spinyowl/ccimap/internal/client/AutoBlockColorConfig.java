@@ -1,6 +1,10 @@
 package com.spinyowl.ccimap.internal.client;
 
 import dev.architectury.platform.Platform;
+import dev.architectury.platform.Mod;
+import dev.ftb.mods.ftbchunks.client.map.MapManager;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -8,11 +12,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.TreeSet;
 
-final class AutoBlockColorConfig {
+public final class AutoBlockColorConfig {
     private static final String KEY_NAMESPACES = "auto_override_namespaces";
     private static final Set<String> DEFAULT_NAMESPACES = Set.of("chisel_chipped_integration");
     private static volatile Set<String> namespaces = DEFAULT_NAMESPACES;
@@ -42,6 +51,51 @@ final class AutoBlockColorConfig {
 
     static boolean contains(String namespace) {
         return namespaces.contains(namespace.toLowerCase(Locale.ROOT));
+    }
+
+    public static synchronized Component list() {
+        TreeSet<String> sorted = new TreeSet<>(namespaces);
+        if (sorted.isEmpty()) {
+            return Component.literal("Auto override namespaces: none").withStyle(ChatFormatting.YELLOW);
+        }
+
+        return Component.literal("Auto override namespaces: " + String.join(", ", sorted)).withStyle(ChatFormatting.AQUA);
+    }
+
+    public static synchronized Component add(String input) {
+        Resolution resolution = resolveInput(input);
+        if (resolution.namespaces().isEmpty()) {
+            return Component.literal("No namespace or loaded mod matched '" + input + "'").withStyle(ChatFormatting.RED);
+        }
+
+        LinkedHashSet<String> updated = new LinkedHashSet<>(namespaces);
+        boolean changed = updated.addAll(resolution.namespaces());
+        namespaces = Set.copyOf(updated);
+        saveCurrent();
+        if (changed) {
+            MapManager.getInstance().ifPresent(manager -> manager.updateAllRegions(false));
+        }
+
+        String prefix = changed ? "Added auto override namespaces: " : "Namespaces already enabled: ";
+        return Component.literal(prefix + String.join(", ", resolution.namespaces())).withStyle(changed ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
+    }
+
+    public static synchronized Component remove(String input) {
+        Resolution resolution = resolveInput(input);
+        if (resolution.namespaces().isEmpty()) {
+            return Component.literal("No namespace or loaded mod matched '" + input + "'").withStyle(ChatFormatting.RED);
+        }
+
+        LinkedHashSet<String> updated = new LinkedHashSet<>(namespaces);
+        boolean changed = updated.removeAll(resolution.namespaces());
+        namespaces = Set.copyOf(updated);
+        saveCurrent();
+        if (changed) {
+            MapManager.getInstance().ifPresent(manager -> manager.updateAllRegions(false));
+        }
+
+        String prefix = changed ? "Removed auto override namespaces: " : "Namespaces were not enabled: ";
+        return Component.literal(prefix + String.join(", ", resolution.namespaces())).withStyle(changed ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
     }
 
     static synchronized boolean reloadIfChanged() {
@@ -74,6 +128,34 @@ final class AutoBlockColorConfig {
 
         lastModifiedMillis = currentModified;
         return !previous.equals(namespaces);
+    }
+
+    private static Resolution resolveInput(String input) {
+        String trimmed = input.trim();
+        if (trimmed.isEmpty()) {
+            return new Resolution(List.of());
+        }
+
+        String normalizedInput = normalize(trimmed);
+        LinkedHashSet<String> resolved = new LinkedHashSet<>();
+
+        if (trimmed.indexOf(' ') < 0) {
+            resolved.add(trimmed.toLowerCase(Locale.ROOT));
+        }
+
+        Collection<Mod> mods = Platform.getMods();
+        ArrayList<String> exactNameMatches = new ArrayList<>();
+        for (Mod mod : mods) {
+            if (normalizedInput.equals(normalize(mod.getName())) || normalizedInput.equals(normalize(mod.getModId()))) {
+                exactNameMatches.add(mod.getModId().toLowerCase(Locale.ROOT));
+            }
+        }
+
+        exactNameMatches.stream()
+            .sorted(Comparator.naturalOrder())
+            .forEach(resolved::add);
+
+        return new Resolution(List.copyOf(resolved));
     }
 
     private static Set<String> parseNamespaces(String content) {
@@ -112,21 +194,18 @@ final class AutoBlockColorConfig {
     private static void saveDefault(Path path) {
         try {
             Files.createDirectories(path.getParent());
-            StringWriter stringWriter = new StringWriter();
-            stringWriter.append("# Namespaces whose blocks should use the runtime model/texture color resolver.\n");
-            stringWriter.append("# Update this list while Minecraft is running; the mod will reload it automatically.\n");
-            stringWriter.append(KEY_NAMESPACES).append(" = [");
-            boolean first = true;
-            for (String namespace : DEFAULT_NAMESPACES) {
-                if (!first) {
-                    stringWriter.append(", ");
-                }
+            Files.writeString(path, serialize(DEFAULT_NAMESPACES), StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
 
-                first = false;
-                stringWriter.append('"').append(namespace).append('"');
-            }
-            stringWriter.append("]\n");
-            Files.writeString(path, stringWriter.toString(), StandardCharsets.UTF_8);
+    private static void saveCurrent() {
+        Path path = path();
+        try {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, serialize(namespaces), StandardCharsets.UTF_8);
+            lastModifiedMillis = getLastModifiedMillis(path);
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -178,7 +257,43 @@ final class AutoBlockColorConfig {
         return line;
     }
 
+    private static String serialize(Set<String> values) {
+        StringWriter stringWriter = new StringWriter();
+        stringWriter.append("# Namespaces whose blocks should use the runtime model/texture color resolver.\n");
+        stringWriter.append("# This file is shared by Fabric and Forge and reloads automatically at runtime.\n");
+        stringWriter.append("# You can use /cci_map_palette auto_override add|remove <namespace-or-mod-name> in game.\n");
+        stringWriter.append(KEY_NAMESPACES).append(" = [");
+
+        boolean first = true;
+        for (String namespace : new TreeSet<>(values)) {
+            if (!first) {
+                stringWriter.append(", ");
+            }
+
+            first = false;
+            stringWriter.append('"').append(namespace).append('"');
+        }
+
+        stringWriter.append("]\n");
+        return stringWriter.toString();
+    }
+
+    private static String normalize(String value) {
+        StringBuilder builder = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = Character.toLowerCase(value.charAt(i));
+            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+                builder.append(c);
+            }
+        }
+
+        return builder.toString();
+    }
+
     private static Path path() {
         return Platform.getConfigFolder().resolve("cci-map-palette-client.toml");
+    }
+
+    private record Resolution(List<String> namespaces) {
     }
 }
