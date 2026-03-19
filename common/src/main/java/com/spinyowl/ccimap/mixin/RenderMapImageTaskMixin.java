@@ -3,6 +3,7 @@ package com.spinyowl.ccimap.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.spinyowl.ccimap.api.client.RuntimeBlockColorRegistry;
+import com.spinyowl.ccimap.api.client.RuntimeFluidColorRegistry;
 import com.spinyowl.ccimap.internal.client.FtbChunksOverrideBlockColor;
 import dev.ftb.mods.ftbchunks.client.map.MapMode;
 import dev.ftb.mods.ftbchunks.client.map.MapRegion;
@@ -15,6 +16,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -46,18 +49,35 @@ abstract class RenderMapImageTaskMixin {
             return original;
         }
 
-        Block block = region.dimension.getManager().getBlock(data.getBlockIndex(index));
-        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
-        if (blockId == null || !RuntimeBlockColorRegistry.hasRules(blockId)) {
+        try {
+            int blockY = getHeight(mapMode, waterHeightFactor, data.waterLightAndBiome[index], data.height[index]);
+            int blockX = region.pos.x() * 512 + ax;
+            int blockZ = region.pos.z() * 512 + az;
+            net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(blockX, blockY, blockZ);
+            BlockState state = world.getBlockState(pos);
+            FluidState fluidState = state.getFluidState();
+            if (!fluidState.isEmpty()) {
+                Fluid fluid = fluidState.getType();
+                ResourceLocation fluidId = BuiltInRegistries.FLUID.getKey(fluid);
+                if (fluidId != null && RuntimeFluidColorRegistry.hasRules(fluidId)) {
+                    Color4I override = RuntimeFluidColorRegistry.resolve(world, pos, fluidState, fluidId);
+                    if (override != null) {
+                        return FtbChunksOverrideBlockColor.install(override);
+                    }
+                }
+            }
+
+            Block block = region.dimension.getManager().getBlock(data.getBlockIndex(index));
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+            if (blockId == null || !RuntimeBlockColorRegistry.hasRules(blockId)) {
+                return original;
+            }
+
+            Color4I override = RuntimeBlockColorRegistry.resolve(world, pos, state, blockId);
+            return override == null ? original : FtbChunksOverrideBlockColor.install(override);
+        } catch (Exception ex) {
             return original;
         }
-
-        int blockY = getHeight(mapMode, waterHeightFactor, data.waterLightAndBiome[index], data.height[index]);
-        int blockX = region.pos.x() * 512 + ax;
-        int blockZ = region.pos.z() * 512 + az;
-        BlockState state = world.getBlockState(new net.minecraft.core.BlockPos(blockX, blockY, blockZ));
-        Color4I override = RuntimeBlockColorRegistry.resolve(world, new net.minecraft.core.BlockPos(blockX, blockY, blockZ), state, blockId);
-        return override == null ? original : FtbChunksOverrideBlockColor.install(override);
     }
 
     private static int getHeight(MapMode mode, int waterHeightFactor, short waterLightAndBiome, short height) {

@@ -1,11 +1,13 @@
 package com.spinyowl.ccimap.internal.client;
 
 import com.spinyowl.ccimap.api.client.RuntimeBlockColorRegistry;
+import com.spinyowl.ccimap.api.client.RuntimeFluidColorRegistry;
 import dev.architectury.event.events.client.ClientGuiEvent;
 import dev.ftb.mods.ftbchunks.ColorMapLoader;
 import dev.ftb.mods.ftbchunks.client.FTBChunksClient;
 import dev.ftb.mods.ftbchunks.client.FTBChunksClientConfig;
 import dev.ftb.mods.ftbchunks.client.map.MapDimension;
+import dev.ftb.mods.ftbchunks.client.map.MapChunk;
 import dev.ftb.mods.ftbchunks.client.map.MapMode;
 import dev.ftb.mods.ftbchunks.client.map.MapRegion;
 import dev.ftb.mods.ftbchunks.client.map.color.BlockColor;
@@ -35,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+import com.spinyowl.ccimap.mixin.MapRegionAccessor;
 
 public final class CciMapPaletteDebugOverlay {
     private static final AtomicBoolean ENABLED = new AtomicBoolean(false);
@@ -149,7 +152,8 @@ public final class CciMapPaletteDebugOverlay {
         ResourceLocation fluidId = fluidState.isEmpty() ? null : BuiltInRegistries.FLUID.getKey(fluidState.getType());
 
         Color4I runtimeOverride = RuntimeBlockColorRegistry.resolve(level, pos, state, blockId);
-        ColorComputation computation = computeFtbColor(level, pos, state, blockId, runtimeOverride);
+        Color4I runtimeFluidOverride = fluidId == null ? null : RuntimeFluidColorRegistry.resolve(level, pos, fluidState, fluidId);
+        ColorComputation computation = computeFtbColor(level, pos, state, blockId, runtimeOverride, runtimeFluidOverride);
         MapPixelInfo mapPixelInfo = readRenderedPixel(pos);
 
         lines.add("  block: " + formatBlockState(blockId, state));
@@ -158,14 +162,22 @@ public final class CciMapPaletteDebugOverlay {
         lines.add("  map_mode: " + formatMapMode(FTBChunksClientConfig.MAP_MODE.get()));
         lines.add("  ignored: " + yesNo(FTBChunksClient.INSTANCE.skipBlock(state)));
         lines.add("  map_color_from: " + describeMapColorSource(state, fluidState));
-        lines.add("  runtime_override: " + formatColor(runtimeOverride));
+        lines.add("  runtime_block_override: " + formatColor(runtimeOverride));
+        lines.add("  runtime_fluid_override: " + formatColor(runtimeFluidOverride));
         lines.add("  ftb_source: " + computation.source());
         lines.add("  ftb_base_color: " + formatColor(computation.color()));
         lines.add("  map_pixel: " + formatColor(mapPixelInfo.color()) + mapPixelInfo.suffix());
         return lines;
     }
 
-    private static ColorComputation computeFtbColor(Level level, BlockPos pos, BlockState state, ResourceLocation blockId, @Nullable Color4I runtimeOverride) {
+    private static ColorComputation computeFtbColor(
+        Level level,
+        BlockPos pos,
+        BlockState state,
+        ResourceLocation blockId,
+        @Nullable Color4I runtimeOverride,
+        @Nullable Color4I runtimeFluidOverride
+    ) {
         MapMode mapMode = FTBChunksClientConfig.MAP_MODE.get();
         boolean hasWater = !state.getFluidState().isEmpty();
 
@@ -189,9 +201,12 @@ public final class CciMapPaletteDebugOverlay {
 
         Color4I color;
         String source;
-        if (runtimeOverride != null) {
+        if (runtimeFluidOverride != null) {
+            color = runtimeFluidOverride.withAlpha(255);
+            source = "runtime_fluid_override";
+        } else if (runtimeOverride != null) {
             color = runtimeOverride.withAlpha(255);
-            source = "runtime_override";
+            source = "runtime_block_override";
         } else {
             BlockColor blockColor = ColorMapLoader.getBlockColor(blockId);
             if (blockColor.isIgnored()) {
@@ -235,17 +250,29 @@ public final class CciMapPaletteDebugOverlay {
             .map(mapDimension -> {
                 MapRegion region = mapDimension.getRegions().get(XZ.of(Math.floorDiv(pos.getX(), 512), Math.floorDiv(pos.getZ(), 512)));
                 if (region == null) {
-                    return new MapPixelInfo(null, " (region not loaded)");
+                    return new MapPixelInfo(null, MapPixelStatus.REGION_NOT_LOADED);
+                }
+
+                int chunkX = (pos.getX() >> 4) & 31;
+                int chunkZ = (pos.getZ() >> 4) & 31;
+                MapChunk chunk = region.getMapChunk(XZ.of(chunkX, chunkZ));
+                if (chunk == null) {
+                    return new MapPixelInfo(null, MapPixelStatus.CHUNK_NOT_PRESENT);
                 }
 
                 int nativeColor = region.getRenderedMapImage().getPixelRGBA(pos.getX() & 511, pos.getZ() & 511);
-                if (nativeColor == 0) {
-                    return new MapPixelInfo(null, " (not rendered yet)");
+                if (nativeColor != 0) {
+                    return new MapPixelInfo(Color4I.rgb(ColorUtils.convertFromNative(nativeColor)).withAlpha(255), MapPixelStatus.RENDERED);
                 }
 
-                return new MapPixelInfo(Color4I.rgb(ColorUtils.convertFromNative(nativeColor)).withAlpha(255), "");
+                MapRegionAccessor accessor = (MapRegionAccessor) region;
+                if (accessor.cciMapPalette$isRenderingMapImage() || accessor.cciMapPalette$shouldUpdateRenderedMapImage()) {
+                    return new MapPixelInfo(null, MapPixelStatus.RENDER_PENDING);
+                }
+
+                return new MapPixelInfo(null, MapPixelStatus.RENDERED_EMPTY);
             })
-            .orElseGet(() -> new MapPixelInfo(null, " (map unavailable)"));
+            .orElseGet(() -> new MapPixelInfo(null, MapPixelStatus.MAP_UNAVAILABLE));
     }
 
     private static String formatBlockState(ResourceLocation blockId, BlockState state) {
@@ -294,6 +321,28 @@ public final class CciMapPaletteDebugOverlay {
     private record ColorComputation(String source, @Nullable Color4I color) {
     }
 
-    private record MapPixelInfo(@Nullable Color4I color, String suffix) {
+    private record MapPixelInfo(@Nullable Color4I color, MapPixelStatus status) {
+        private String suffix() {
+            return status.suffix();
+        }
+    }
+
+    private enum MapPixelStatus {
+        RENDERED(""),
+        REGION_NOT_LOADED(" (region not loaded)"),
+        CHUNK_NOT_PRESENT(" (chunk not present in map data)"),
+        RENDER_PENDING(" (render pending)"),
+        RENDERED_EMPTY(" (rendered image still empty)"),
+        MAP_UNAVAILABLE(" (map unavailable)");
+
+        private final String suffix;
+
+        MapPixelStatus(String suffix) {
+            this.suffix = suffix;
+        }
+
+        private String suffix() {
+            return suffix;
+        }
     }
 }

@@ -77,10 +77,10 @@ public final class AutoBlockColorConfig {
     public static synchronized Component list() {
         TreeSet<String> sorted = new TreeSet<>(namespaces);
         if (sorted.isEmpty()) {
-            return Component.literal("Auto override namespaces: none").withStyle(ChatFormatting.YELLOW);
+            return Component.literal("Auto override namespaces (blocks + fluids): none").withStyle(ChatFormatting.YELLOW);
         }
 
-        return Component.literal("Auto override namespaces: " + String.join(", ", sorted)).withStyle(ChatFormatting.AQUA);
+        return Component.literal("Auto override namespaces (blocks + fluids): " + String.join(", ", sorted)).withStyle(ChatFormatting.AQUA);
     }
 
     public static synchronized Component add(String input) {
@@ -97,7 +97,7 @@ public final class AutoBlockColorConfig {
             MapManager.getInstance().ifPresent(manager -> manager.updateAllRegions(false));
         }
 
-        String prefix = changed ? "Added auto override namespaces: " : "Namespaces already enabled: ";
+        String prefix = changed ? "Added auto override namespaces (blocks + fluids): " : "Namespaces already enabled: ";
         return Component.literal(prefix + String.join(", ", resolution.namespaces())).withStyle(changed ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
     }
 
@@ -115,7 +115,7 @@ public final class AutoBlockColorConfig {
             MapManager.getInstance().ifPresent(manager -> manager.updateAllRegions(false));
         }
 
-        String prefix = changed ? "Removed auto override namespaces: " : "Namespaces were not enabled: ";
+        String prefix = changed ? "Removed auto override namespaces (blocks + fluids): " : "Namespaces were not enabled: ";
         return Component.literal(prefix + String.join(", ", resolution.namespaces())).withStyle(changed ? ChatFormatting.GREEN : ChatFormatting.YELLOW);
     }
 
@@ -305,7 +305,7 @@ public final class AutoBlockColorConfig {
 
     private static String serialize(Set<String> values, String defaultsVersion) {
         StringWriter stringWriter = new StringWriter();
-        stringWriter.append("# Namespaces whose blocks should use the runtime model/texture color resolver.\n");
+        stringWriter.append("# Namespaces whose blocks and fluids should use runtime color resolution.\n");
         stringWriter.append("# This file is shared by Fabric and Forge and reloads automatically at runtime.\n");
         stringWriter.append("# You can use /cci_map_palette auto_override add|remove <namespace-or-mod-name> in game.\n");
         stringWriter.append("# New default namespaces are merged into this file automatically when the mod version changes.\n");

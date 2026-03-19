@@ -41,6 +41,7 @@ dependencies {
 	modApi "dev.architectury:architectury-fabric:${rootProject.architectury_version}"
 	modImplementation(include("io.github.llamalad7:mixinextras-fabric:0.4.1"))
 	modImplementation "dev.ftb.mods:ftb-chunks-fabric:${rootProject.ftb_chunks_version}"
+	modCompileOnly "dev.ftb.mods:ftb-library:${rootProject.ftb_library_version}"
 
 	common(project(path: ":common", configuration: "dev")) { transitive false }
 	shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
