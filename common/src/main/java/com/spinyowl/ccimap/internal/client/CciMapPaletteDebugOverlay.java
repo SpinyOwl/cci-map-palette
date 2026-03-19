@@ -167,6 +167,9 @@ public final class CciMapPaletteDebugOverlay {
         lines.add("  ftb_source: " + computation.source());
         lines.add("  ftb_base_color: " + formatColor(computation.color()));
         lines.add("  map_pixel: " + formatColor(mapPixelInfo.color()) + mapPixelInfo.suffix());
+        if (mapPixelInfo.detail() != null) {
+            lines.add("  map_pixel_detail: " + mapPixelInfo.detail());
+        }
         return lines;
     }
 
@@ -267,10 +270,10 @@ public final class CciMapPaletteDebugOverlay {
 
                 MapRegionAccessor accessor = (MapRegionAccessor) region;
                 if (accessor.cciMapPalette$isRenderingMapImage() || accessor.cciMapPalette$shouldUpdateRenderedMapImage()) {
-                    return new MapPixelInfo(null, MapPixelStatus.RENDER_PENDING);
+                    return new MapPixelInfo(null, MapPixelStatus.RENDER_PENDING, MapRenderDebugState.getFailure(region));
                 }
 
-                return new MapPixelInfo(null, MapPixelStatus.RENDERED_EMPTY);
+                return new MapPixelInfo(null, MapPixelStatus.RENDERED_EMPTY, MapRenderDebugState.getFailure(region));
             })
             .orElseGet(() -> new MapPixelInfo(null, MapPixelStatus.MAP_UNAVAILABLE));
     }
@@ -321,7 +324,11 @@ public final class CciMapPaletteDebugOverlay {
     private record ColorComputation(String source, @Nullable Color4I color) {
     }
 
-    private record MapPixelInfo(@Nullable Color4I color, MapPixelStatus status) {
+    private record MapPixelInfo(@Nullable Color4I color, MapPixelStatus status, @Nullable String detail) {
+        private MapPixelInfo(@Nullable Color4I color, MapPixelStatus status) {
+            this(color, status, null);
+        }
+
         private String suffix() {
             return status.suffix();
         }

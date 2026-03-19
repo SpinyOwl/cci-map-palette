@@ -1,4 +1,4 @@
-package com.spinyowl.ccimap.platform;
+package com.spinyowl.ccimap.platform.forge;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.ftb.mods.ftblibrary.icon.Color4I;

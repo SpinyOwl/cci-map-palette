@@ -1,10 +1,13 @@
 package com.spinyowl.ccimap.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.spinyowl.ccimap.api.client.RuntimeBlockColorRegistry;
 import com.spinyowl.ccimap.api.client.RuntimeFluidColorRegistry;
 import com.spinyowl.ccimap.internal.client.FtbChunksOverrideBlockColor;
+import com.spinyowl.ccimap.internal.client.MapRenderDebugState;
 import dev.ftb.mods.ftbchunks.client.map.MapMode;
 import dev.ftb.mods.ftbchunks.client.map.MapRegion;
 import dev.ftb.mods.ftbchunks.client.map.MapRegionData;
@@ -25,6 +28,18 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(value = RenderMapImageTask.class, remap = false)
 abstract class RenderMapImageTaskMixin {
     @Shadow(remap = false) public MapRegion region;
+
+    @WrapMethod(method = "runMapTask", remap = false)
+    private void cciMapPalette$trackRenderTask(Operation<Void> original) {
+        try {
+            original.call();
+            MapRenderDebugState.clearFailure(region);
+        } catch (Throwable throwable) {
+            MapRenderDebugState.recordFailure(region, "render_task", throwable);
+            region.afterImageRenderTask();
+            throw throwable;
+        }
+    }
 
     @ModifyExpressionValue(
         method = "runMapTask",
@@ -76,6 +91,12 @@ abstract class RenderMapImageTaskMixin {
             Color4I override = RuntimeBlockColorRegistry.resolve(world, pos, state, blockId);
             return override == null ? original : FtbChunksOverrideBlockColor.install(override);
         } catch (Exception ex) {
+            MapRenderDebugState.recordFailure(
+                region,
+                "override@" + (region.pos.x() * 512 + ax) + "," + getHeight(mapMode, waterHeightFactor, data.waterLightAndBiome[index], data.height[index]) + "," + (region.pos.z() * 512 + az)
+                    + " idx=" + data.getBlockIndex(index),
+                ex
+            );
             return original;
         }
     }
