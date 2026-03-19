@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Added runtime fluid color overrides and automatic fluid color resolution for configured namespaces.
+- Added targeted map invalidation commands and expanded the debug overlay with per-pixel FTB Chunks render state reporting.
+- Added render-task failure diagnostics to the debug overlay to expose stuck region render errors directly in game.
+- Fixed Forge and Fabric fluid color helper platform wiring so fluid override rendering no longer crashes map image tasks.
+
 ## 0.1.1
 
 - Added default auto-override coverage for more block-heavy building mods including Chipped, Rechiseled, FramedBlocks, Architect's Palette, Dustrial Decor, and Create Diesel Generators.
