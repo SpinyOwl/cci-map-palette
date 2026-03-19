@@ -3,9 +3,11 @@
 ## 0.3.0
 
 - Added runtime fluid color overrides and automatic fluid color resolution for configured namespaces.
-- Added targeted map invalidation commands and expanded the debug overlay with per-pixel FTB Chunks render state reporting.
-- Added render-task failure diagnostics to the debug overlay to expose stuck region render errors directly in game.
-- Fixed Forge and Fabric fluid color helper platform wiring so fluid override rendering no longer crashes map image tasks.
+- Unified `auto_override` so namespace support applies to both blocks and fluids.
+- Expanded the debug overlay to show fluid ids, whether map coloring comes from block or fluid state, and separate runtime block/fluid override values.
+- Broadened AE2 support from `cable_bus` only to AE2 colorable block entities that expose runtime color state.
+- Added a targeted `/cci_map_palette invalidate_map <radius>` command for rescanning loaded chunks around the player.
+- Hardened the render hook so runtime override failures fall back to the original FTB Chunks path instead of aborting map rendering.
 
 ## 0.1.1
 
