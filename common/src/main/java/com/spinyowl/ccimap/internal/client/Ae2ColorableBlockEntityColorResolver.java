@@ -11,22 +11,23 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-final class Ae2CableBusColorResolver {
-    private static final ResourceLocation CABLE_BUS_ID = new ResourceLocation("ae2", "cable_bus");
-    private static final String CABLE_BUS_BLOCK_ENTITY_CLASS = "appeng.blockentity.networking.CableBusBlockEntity";
+final class Ae2ColorableBlockEntityColorResolver {
+    private static final String AE2_NAMESPACE = "ae2";
+    private static final String COLORABLE_BLOCK_ENTITY_CLASS = "appeng.api.implementations.blockentities.IColorableBlockEntity";
     private static final String AE_COLOR_CLASS = "appeng.api.util.AEColor";
 
     private static volatile boolean reflectionInitialized;
     private static volatile boolean reflectionAvailable;
+    private static Class<?> colorableBlockEntityClass;
     private static Method getColorMethod;
     private static Field mediumVariantField;
 
-    private Ae2CableBusColorResolver() {
+    private Ae2ColorableBlockEntityColorResolver() {
     }
 
     @Nullable
     static Color4I resolve(BlockAndTintGetter world, BlockPos pos, BlockState state, ResourceLocation blockId) {
-        if (!CABLE_BUS_ID.equals(blockId)) {
+        if (!AE2_NAMESPACE.equals(blockId.getNamespace())) {
             return null;
         }
 
@@ -36,7 +37,7 @@ final class Ae2CableBusColorResolver {
         }
 
         BlockEntity blockEntity = world.getBlockEntity(pos);
-        if (blockEntity == null || !CABLE_BUS_BLOCK_ENTITY_CLASS.equals(blockEntity.getClass().getName())) {
+        if (blockEntity == null || !colorableBlockEntityClass.isInstance(blockEntity)) {
             return null;
         }
 
@@ -62,16 +63,16 @@ final class Ae2CableBusColorResolver {
             return;
         }
 
-        synchronized (Ae2CableBusColorResolver.class) {
+        synchronized (Ae2ColorableBlockEntityColorResolver.class) {
             if (reflectionInitialized) {
                 return;
             }
 
             try {
-                Class<?> cableBusBlockEntityClass = Class.forName(CABLE_BUS_BLOCK_ENTITY_CLASS);
+                colorableBlockEntityClass = Class.forName(COLORABLE_BLOCK_ENTITY_CLASS);
                 Class<?> aeColorClass = Class.forName(AE_COLOR_CLASS);
 
-                getColorMethod = cableBusBlockEntityClass.getMethod("getColor");
+                getColorMethod = colorableBlockEntityClass.getMethod("getColor");
                 mediumVariantField = aeColorClass.getField("mediumVariant");
                 reflectionAvailable = true;
             } catch (ReflectiveOperationException ex) {
