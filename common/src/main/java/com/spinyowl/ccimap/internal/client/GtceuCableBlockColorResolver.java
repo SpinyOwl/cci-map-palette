@@ -57,6 +57,11 @@ final class GtceuCableBlockColorResolver {
                 return null;
             }
 
+            String resolvedName = GtceuCableBlockNameResolver.resolve(block, blockId);
+            if (resolvedName != null) {
+                RuntimeBlockNameRegistry.put(blockId, resolvedName);
+            }
+
             int rgb = (int) getMaterialRgbMethod.invoke(material);
             return Color4I.rgb(rgb).withAlpha(255);
         } catch (ReflectiveOperationException ex) {

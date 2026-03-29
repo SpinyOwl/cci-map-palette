@@ -13,6 +13,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.FastColor;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -60,6 +61,12 @@ public final class AutoBlockColorResolver {
 
         Color4I specialCase = Ae2ColorableBlockEntityColorResolver.resolve(world, pos, state, blockId);
         if (specialCase != null) {
+            if (world instanceof Level level) {
+                String resolvedName = Ae2CableBusBlockNameResolver.resolve(level, pos, blockId);
+                if (resolvedName != null) {
+                    RuntimeBlockNameRegistry.put(blockId, resolvedName);
+                }
+            }
             return specialCase;
         }
 

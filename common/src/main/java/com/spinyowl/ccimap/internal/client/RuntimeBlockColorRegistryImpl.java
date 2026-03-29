@@ -61,6 +61,7 @@ public final class RuntimeBlockColorRegistryImpl {
     }
 
     public static void invalidateAll() {
+        RuntimeBlockNameRegistry.clear();
         MapManager.getInstance().ifPresent(manager -> manager.updateAllRegions(false));
     }
 
