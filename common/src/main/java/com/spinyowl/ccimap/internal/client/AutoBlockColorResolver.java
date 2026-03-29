@@ -63,6 +63,11 @@ public final class AutoBlockColorResolver {
             return specialCase;
         }
 
+        specialCase = GtceuCableBlockColorResolver.resolve(world, pos, state, blockId);
+        if (specialCase != null) {
+            return specialCase;
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null) {
             return null;
