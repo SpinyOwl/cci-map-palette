@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+- Added runtime block name resolvers so the large map overlay can show resolved names for blocks with runtime-derived map state.
+- Added AE2 and GTCEu cable runtime name resolution so overlay labels reflect the actual cable variant instead of the base block id.
+- Added GTCEu cable runtime color resolution to keep minimap colors aligned with resolved cable materials and states.
+
 ## 0.3.0
 
 - Added runtime fluid color overrides and automatic fluid color resolution for configured namespaces.
