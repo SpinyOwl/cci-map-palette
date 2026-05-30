@@ -64,6 +64,10 @@ public final class CciMapPaletteClient {
         return AutoBlockColorConfig.list();
     }
 
+    public static Component listUnmappedMods() {
+        return AutoBlockColorConfig.listUnmappedMods();
+    }
+
     public static Component addAutoOverride(String input) {
         return AutoBlockColorConfig.add(input);
     }

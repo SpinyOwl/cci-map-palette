@@ -29,6 +29,7 @@ The current focus is improving map colors for content-heavy tech and building pa
 /cci_map_palette debug [on|off]
 /cci_map_palette auto_override
 /cci_map_palette auto_override list
+/cci_map_palette auto_override unmapped
 /cci_map_palette auto_override add <namespace-or-mod-name>
 /cci_map_palette auto_override remove <namespace-or-mod-name>
 ```

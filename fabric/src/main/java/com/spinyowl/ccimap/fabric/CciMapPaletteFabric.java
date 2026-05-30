@@ -42,6 +42,18 @@ public final class CciMapPaletteFabric implements ClientModInitializer {
 							return Command.SINGLE_SUCCESS;
 						})
 					)
+					.then(ClientCommandManager.literal("unmapped")
+						.executes(context -> {
+							context.getSource().sendFeedback(CciMapPaletteClient.listUnmappedMods());
+							return Command.SINGLE_SUCCESS;
+						})
+					)
+					.then(ClientCommandManager.literal("list_unmapped")
+						.executes(context -> {
+							context.getSource().sendFeedback(CciMapPaletteClient.listUnmappedMods());
+							return Command.SINGLE_SUCCESS;
+						})
+					)
 					.then(ClientCommandManager.literal("add")
 						.then(ClientCommandManager.argument("target", StringArgumentType.greedyString())
 							.executes(context -> {

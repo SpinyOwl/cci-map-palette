@@ -14,6 +14,9 @@ Set the following before publishing:
 Optional overrides:
 
 - `curseforge_release_type=alpha|beta|release`
+- `curseforge_changelog_file=CHANGELOG.md`
+- `curseforge_minecraft_version=1.20.1`
+- `curseforge_minecraft_version_type=minecraft-1-20`
 - `mod_homepage_url`
 - `mod_sources_url`
 - `mod_issues_url`
@@ -30,6 +33,7 @@ This task builds first, then uploads:
 - the Forge jar from `forge/build/libs`
 
 using the metadata, changelog, dependencies, and game version declared in the repository.
+Each upload is tagged explicitly with Minecraft `1.20.1`, Java `17`, and its matching mod loader (`Fabric` or `Forge`).
 The project icon source is stored at `branding/logo-512.png` and embedded into both mod jars as `assets/cci_map_palette/icon.png`.
 
 ### Dry run

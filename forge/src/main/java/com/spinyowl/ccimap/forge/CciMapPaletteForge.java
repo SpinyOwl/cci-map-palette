@@ -49,6 +49,18 @@ public final class CciMapPaletteForge {
 							return Command.SINGLE_SUCCESS;
 						})
 					)
+					.then(Commands.literal("unmapped")
+						.executes(context -> {
+							context.getSource().sendSuccess(() -> CciMapPaletteClient.listUnmappedMods(), false);
+							return Command.SINGLE_SUCCESS;
+						})
+					)
+					.then(Commands.literal("list_unmapped")
+						.executes(context -> {
+							context.getSource().sendSuccess(() -> CciMapPaletteClient.listUnmappedMods(), false);
+							return Command.SINGLE_SUCCESS;
+						})
+					)
 					.then(Commands.literal("add")
 						.then(Commands.argument("target", StringArgumentType.greedyString())
 							.executes(context -> {

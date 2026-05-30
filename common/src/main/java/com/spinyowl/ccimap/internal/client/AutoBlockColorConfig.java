@@ -83,6 +83,22 @@ public final class AutoBlockColorConfig {
         return Component.literal("Auto override namespaces (blocks + fluids): " + String.join(", ", sorted)).withStyle(ChatFormatting.AQUA);
     }
 
+    public static synchronized Component listUnmappedMods() {
+        TreeSet<String> sorted = new TreeSet<>();
+        for (Mod mod : Platform.getMods()) {
+            String modId = mod.getModId().toLowerCase(Locale.ROOT);
+            if (!namespaces.contains(modId)) {
+                sorted.add(modId);
+            }
+        }
+
+        if (sorted.isEmpty()) {
+            return Component.literal("Unmapped loaded mods: none").withStyle(ChatFormatting.GREEN);
+        }
+
+        return Component.literal("Unmapped loaded mods (" + sorted.size() + "): " + String.join(", ", sorted)).withStyle(ChatFormatting.YELLOW);
+    }
+
     public static synchronized Component add(String input) {
         Resolution resolution = resolveInput(input);
         if (resolution.namespaces().isEmpty()) {
